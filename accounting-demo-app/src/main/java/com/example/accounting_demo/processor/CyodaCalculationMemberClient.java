@@ -76,13 +76,13 @@ public class CyodaCalculationMemberClient implements DisposableBean, Initializin
             public void onNext(CloudEvent value) {
                 System.out.println(">> Got EVENT:\n" + value);
                 switch (value.getType()) {
-                    case "ENTITY_PROCESSOR_CALCULATION_REQUEST":
+                    case "EntityProcessorCalculationRequest":
                         try {
                             EntityProcessorCalculationRequest request = objectMapper.readValue(value.getTextData(), EntityProcessorCalculationRequest.class);
                             BaseEvent response = processor.calculate(request);
                             sendEvent(response);
                         } catch (IOException e) {
-                            System.err.println("Error processing ENTITY_PROCESSOR_CALCULATION_REQUEST: " + e.getMessage());
+                            System.err.println("Error processing EntityProcessorCalculationRequest: " + e.getMessage());
                         }
                         break;
                     default:
@@ -105,7 +105,7 @@ public class CyodaCalculationMemberClient implements DisposableBean, Initializin
 
         CalculationMemberJoinEvent event = new CalculationMemberJoinEvent();
         event.setOwner("PLAY");
-        event.setTags(List.of("demo", "accounting"));
+        event.setTags(List.of("accounting"));
         sendEvent(event);
     }
 
