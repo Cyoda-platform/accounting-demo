@@ -33,7 +33,7 @@ public class EntityPublisher {
     @Autowired
     EntityIdLists entityIdLists;
 
-    private String modelVersion = "1";
+    private String modelVersion = "4";
     private final CloseableHttpClient httpClient = HttpClients.createDefault();
 
     @Value("${my.token}")
@@ -107,8 +107,8 @@ public class EntityPublisher {
             }
 
             switch (model) {
-                case "travel_report":
-                    entityIdLists.addToTravelReportIdList(entityIdList);
+                case "expense_report":
+                    entityIdLists.addToExpenseReportIdList(entityIdList);
                     System.out.println(model + "IdList updated with ids: " + entityIdList);
                     break;
                 case "payment":
@@ -152,7 +152,7 @@ public class EntityPublisher {
 
         Class<?> firstClass = entities.get(0).getClass();
         return switch (firstClass.getSimpleName()) {
-            case "BusinessTravelReport" -> "travel_report";
+            case "ExpenseReport" -> "expense_report";
             case "Payment" -> "payment";
             case "Employee" -> "employee";
             default -> "unknown_model";

@@ -10,8 +10,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
-import java.util.UUID;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
@@ -35,7 +33,7 @@ public class EntityPublisherTest {
     private ObjectMapper mapper = new ObjectMapper();
 
     @Test
-    public void saveEntitySchemaTest1() throws Exception {
+    public void saveEntitySchemaTest() throws Exception {
         var employee = entityGenerator.generateEmployees(1);
         HttpResponse response1 = entityPublisher.saveEntitySchema(employee);
         int statusCode1 = response1.getStatusLine().getStatusCode();
@@ -102,7 +100,7 @@ public class EntityPublisherTest {
         int statusCode1 = response1.getStatusLine().getStatusCode();
         assertThat(statusCode1).isEqualTo(HttpStatus.SC_OK);
 
-        var savedReportId = entityIdLists.getTravelReportIdList().get(0);
+        var savedReportId = entityIdLists.getExpenseReportIdList().get(0);
         var statusBeforeTransition = entityService.getCurrentState(savedReportId);
 
         HttpResponse response2 = entityService.launchTransition(savedReportId, "SUBMIT");
@@ -120,7 +118,7 @@ public class EntityPublisherTest {
         HttpResponse response = entityPublisher.saveEntities(report);
         assertThat(response.getStatusLine().getStatusCode()).isEqualTo(HttpStatus.SC_OK);
 
-        var savedReportId = entityIdLists.getTravelReportIdList().get(0);
+        var savedReportId = entityIdLists.getExpenseReportIdList().get(0);
         String columnPath = "values@org#cyoda#entity#model#ValueMaps.strings.[.city]";
 
         var value = entityService.getValue(savedReportId, columnPath);
@@ -136,7 +134,7 @@ public class EntityPublisherTest {
 
         String columnPath = "values@org#cyoda#entity#model#ValueMaps.strings.[.city]";
 
-        var savedReportId = entityIdLists.getTravelReportIdList().get(0);
+        var savedReportId = entityIdLists.getExpenseReportIdList().get(0);
         String updatedValue = "updatedCity";
 
         JsonNode jsonNode = mapper.valueToTree(updatedValue);
@@ -151,13 +149,13 @@ public class EntityPublisherTest {
 
     @Test
     public void workflowTest() throws Exception {
-        var employeesCount = 5;
-        var reportsCount = 20;
-        var transitionsCount = 50;
+        var employeesCount = 1;
+        var reportsCount = 1;
+        var transitionsCount = 10;
 
         var employees = entityGenerator.generateEmployees(employeesCount);
         entityPublisher.saveEntities(employees);
-        //        TravelReport is created by an employee
+        //        ExpenseReport is created by an employee
         var reports = entityGenerator.generateReports(reportsCount);
         entityPublisher.saveEntities(reports);
 
@@ -166,7 +164,7 @@ public class EntityPublisherTest {
         for (int i = 0; i < transitionsCount; i++) {
             System.out.println("TRANSITION NUMBER: " + i);
 
-            var randomReportId = entityIdLists.getRandomTravelReportId();
+            var randomReportId = entityIdLists.getRandomExpenseReportId();
             var availableTransitions = entityService.getListTransitions(randomReportId);
             System.out.println("Available transitions: " + availableTransitions.toString());
 

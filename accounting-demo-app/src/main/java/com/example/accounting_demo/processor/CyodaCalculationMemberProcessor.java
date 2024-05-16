@@ -1,6 +1,6 @@
 package com.example.accounting_demo.processor;
 
-import com.example.accounting_demo.model.BusinessTravelReport;
+import com.example.accounting_demo.model.ExpenseReport;
 import com.example.accounting_demo.model.Payment;
 import com.example.accounting_demo.service.EntityPublisher;
 import com.example.accounting_demo.service.EntityService;
@@ -92,7 +92,7 @@ public class CyodaCalculationMemberProcessor {
         var data = request.getPayload().getData();
         String dataJson = mapper.writeValueAsString(data);
 
-        BusinessTravelReport report = mapper.readValue(dataJson, BusinessTravelReport.class);
+        ExpenseReport report = mapper.readValue(dataJson, ExpenseReport.class);
         String totalAmount = report.getTotalAmount();
         
         Payment payment = new Payment();

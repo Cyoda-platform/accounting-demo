@@ -15,7 +15,7 @@ import java.util.UUID;
 public class EntityIdLists {
 
     private List<UUID> employeeIdList = new ArrayList<>();
-    private List<UUID> travelReportIdList = new ArrayList<>();
+    private List<UUID> expenseReportIdList = new ArrayList<>();
     private List<UUID> paymentIdList = new ArrayList<>();
 
     private static final Random random = new Random();
@@ -24,8 +24,8 @@ public class EntityIdLists {
         employeeIdList.addAll(ids);
     }
 
-    public void addToTravelReportIdList(List<UUID> ids) {
-        travelReportIdList.addAll(ids);
+    public void addToExpenseReportIdList(List<UUID> ids) {
+        expenseReportIdList.addAll(ids);
     }
 
     public void addToPaymentIdList(List<UUID> ids) {
@@ -39,11 +39,11 @@ public class EntityIdLists {
         return employeeIdList.get(random.nextInt(employeeIdList.size()));
     }
 
-    public UUID getRandomTravelReportId() {
-        if (travelReportIdList.isEmpty()) {
+    public UUID getRandomExpenseReportId() {
+        if (expenseReportIdList.isEmpty()) {
             return null;
         }
-        return travelReportIdList.get(random.nextInt(travelReportIdList.size()));
+        return expenseReportIdList.get(random.nextInt(expenseReportIdList.size()));
     }
 
     public UUID getRandomPaymentId() {
