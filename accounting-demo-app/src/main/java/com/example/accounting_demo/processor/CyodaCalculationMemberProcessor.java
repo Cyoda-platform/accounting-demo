@@ -2,10 +2,8 @@ package com.example.accounting_demo.processor;
 
 import com.example.accounting_demo.model.BusinessTravelReport;
 import com.example.accounting_demo.model.Payment;
-import com.example.accounting_demo.repository.BusinessTravelReportRepository;
 import com.example.accounting_demo.service.EntityPublisher;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonMappingException;
+import com.example.accounting_demo.service.EntityService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.cyoda.cloud.api.event.BaseEvent;
 import org.cyoda.cloud.api.event.DataPayload;
@@ -16,20 +14,22 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Random;
 import java.util.UUID;
 
 @Component
 public class CyodaCalculationMemberProcessor {
 
     @Autowired
-    BusinessTravelReportRepository reportRepository;
-
-    @Autowired
     ObjectMapper mapper;
+
     @Autowired
     private EntityPublisher entityPublisher;
 
-    public BaseEvent calculate(EntityProcessorCalculationRequest request) throws IOException {
+    @Autowired
+    private EntityService entityService;
+
+    public BaseEvent calculate(EntityProcessorCalculationRequest request) throws IOException, InterruptedException {
         EntityProcessorCalculationResponse response = new EntityProcessorCalculationResponse();
 
         response.setOwner(request.getOwner());
@@ -43,14 +43,17 @@ public class CyodaCalculationMemberProcessor {
         response.setPayload(payload);
 
         switch (request.getProcessorName()) {
-            case "sendNewEntityToClient":
-                saveEntityToRepo(request);
-                break;
             case "notifyApprover":
                 notifyApprover(request);
                 break;
             case "schedulePayment":
                 schedulePayment(request);
+                break;
+            case "sendToBank":
+                sendToBank(request);
+                break;
+            case "bookPayment":
+                bookPayment(request);
                 break;
 
             default:
@@ -60,26 +63,30 @@ public class CyodaCalculationMemberProcessor {
 
         return response;
     }
-    //needed for tests; saves entities from saas to the local db; can be replaced with saving a list of ids, received from saas after entity creation
-    public void saveEntityToRepo(EntityProcessorCalculationRequest request) throws JsonProcessingException {
-        var data = request.getPayload().getData();
-        String dataJson = mapper.writeValueAsString(data);
 
-        try {
-            BusinessTravelReport report = mapper.readValue(dataJson, BusinessTravelReport.class);
-            report.setId(UUID.fromString(request.getEntityId()));
-            reportRepository.save(report);
-            System.out.println("Saved reports: " + report);
-        } catch (JsonMappingException e) {
-            System.err.println("Error saving entity: JSON does not match the class fields.");
-            e.printStackTrace();
+    private void bookPayment(EntityProcessorCalculationRequest request) throws IOException {
+        var travelReportId = entityService.getValue(UUID.fromString(request.getEntityId()), "values@org#cyoda#entity#model#ValueMaps.timeuuids.[.btReportId]");
+        entityService.launchTransition(UUID.fromString(travelReportId), "BOOK_PAYMENT");
+    }
+
+    private void sendToBank(EntityProcessorCalculationRequest request) throws IOException, InterruptedException {
+        boolean isEnoughFunds = new Random().nextBoolean();
+
+        System.out.println(entityService.getCurrentState(UUID.fromString(request.getEntityId())));
+
+        if (isEnoughFunds) {
+            entityService.launchTransition(UUID.fromString(request.getEntityId()), "ACCEPT_BY_BANK");
+        } else {
+            entityService.launchTransition(UUID.fromString(request.getEntityId()), "REJECT_BY_BANK");
         }
     }
+
     //imitates email notification
     public void notifyApprover(EntityProcessorCalculationRequest request) {
         System.out.println("Report with id: " + request.getEntityId() + " SUBMITTED");
 
     }
+
     //creates and saves new payment entity
     public void schedulePayment(EntityProcessorCalculationRequest request) throws IOException {
         var data = request.getPayload().getData();

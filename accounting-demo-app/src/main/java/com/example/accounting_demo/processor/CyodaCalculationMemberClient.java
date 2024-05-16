@@ -82,7 +82,9 @@ public class CyodaCalculationMemberClient implements DisposableBean, Initializin
                             BaseEvent response = processor.calculate(request);
                             sendEvent(response);
                         } catch (IOException e) {
-                            System.err.println("Error processing EntityProcessorCalculationRequest: " + e.getMessage());
+                            System.err.println("Error processing EntityProcessorCalculationRequest: " + e.getMessage() + value);
+                        } catch (InterruptedException e) {
+                            throw new RuntimeException(e);
                         }
                         break;
                     default:

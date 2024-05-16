@@ -6,30 +6,24 @@ import jakarta.persistence.Id;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.sql.Timestamp;
 import java.util.UUID;
 
 @Entity
 @Getter
 @Setter
-public class BusinessTravelReport {
-
+public class Employee {
     @Id
     @JsonIgnore
     private UUID id;
-    private UUID employeeId;
-    private String city;
-    private Timestamp departureDate;
-    private String totalAmount;
+    private String fullName;
+    private String department;
 
     @Override
     public String toString() {
         return "BusinessTravelReport{" +
                 "id=" + id +
-                ", employeeId='" + employeeId + '\'' +
-                ", city='" + city + '\'' +
-                ", departureDate=" + departureDate +
-                ", totalAmount='" + totalAmount + '\'' +
+                ", fullName='" + fullName + '\'' +
+                ", department='" + department + '\'' +
                 '}';
     }
 }
