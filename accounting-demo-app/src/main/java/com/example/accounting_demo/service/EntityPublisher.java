@@ -33,7 +33,7 @@ public class EntityPublisher {
     @Autowired
     EntityIdLists entityIdLists;
 
-    private String modelVersion = "4";
+    private String modelVersion = "1";
     private final CloseableHttpClient httpClient = HttpClients.createDefault();
 
     @Value("${my.token}")
@@ -153,6 +153,7 @@ public class EntityPublisher {
         Class<?> firstClass = entities.get(0).getClass();
         return switch (firstClass.getSimpleName()) {
             case "ExpenseReport" -> "expense_report";
+            case "ExpenseReportNested" -> "expense_report";
             case "Payment" -> "payment";
             case "Employee" -> "employee";
             default -> "unknown_model";

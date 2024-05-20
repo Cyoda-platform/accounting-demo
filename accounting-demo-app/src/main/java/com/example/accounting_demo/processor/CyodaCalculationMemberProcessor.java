@@ -46,14 +46,14 @@ public class CyodaCalculationMemberProcessor {
             case "notifyApprover":
                 notifyApprover(request);
                 break;
-            case "schedulePayment":
-                schedulePayment(request);
+            case "createPayment":
+                createPayment(request);
                 break;
             case "sendToBank":
                 sendToBank(request);
                 break;
-            case "bookPayment":
-                bookPayment(request);
+            case "postPayment":
+                postPayment(request);
                 break;
 
             default:
@@ -64,21 +64,24 @@ public class CyodaCalculationMemberProcessor {
         return response;
     }
 
-    private void bookPayment(EntityProcessorCalculationRequest request) throws IOException {
+    private void postPayment(EntityProcessorCalculationRequest request) throws IOException {
         var travelReportId = entityService.getValue(UUID.fromString(request.getEntityId()), "values@org#cyoda#entity#model#ValueMaps.timeuuids.[.btReportId]");
-        entityService.launchTransition(UUID.fromString(travelReportId), "BOOK_PAYMENT");
+        entityService.launchTransition(UUID.fromString(travelReportId), "POST_PAYMENT");
     }
 
     private void sendToBank(EntityProcessorCalculationRequest request) throws IOException, InterruptedException {
         boolean isEnoughFunds = new Random().nextBoolean();
+        var paymentId = UUID.fromString(request.getEntityId());
 
-        System.out.println(entityService.getCurrentState(UUID.fromString(request.getEntityId())));
+        System.out.println((entityService.getCurrentState(paymentId) + " is state of payment with id: " + paymentId));
 
         if (isEnoughFunds) {
             entityService.launchTransition(UUID.fromString(request.getEntityId()), "ACCEPT_BY_BANK");
         } else {
             entityService.launchTransition(UUID.fromString(request.getEntityId()), "REJECT_BY_BANK");
         }
+
+        System.out.println((entityService.getCurrentState(paymentId) + " is state of payment with id: " + paymentId));
     }
 
     //imitates email notification
@@ -88,7 +91,7 @@ public class CyodaCalculationMemberProcessor {
     }
 
     //creates and saves new payment entity
-    public void schedulePayment(EntityProcessorCalculationRequest request) throws IOException {
+    public void createPayment(EntityProcessorCalculationRequest request) throws IOException {
         var data = request.getPayload().getData();
         String dataJson = mapper.writeValueAsString(data);
 

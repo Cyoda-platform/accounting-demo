@@ -1,9 +1,6 @@
 package com.example.accounting_demo.auxiliary;
 
-import com.example.accounting_demo.model.Expense;
-import com.example.accounting_demo.model.ExpenseReport;
-import com.example.accounting_demo.model.Employee;
-import com.example.accounting_demo.model.Payment;
+import com.example.accounting_demo.model.*;
 import com.example.accounting_demo.service.EntityIdLists;
 import lombok.Getter;
 import net.datafaker.Faker;
@@ -31,7 +28,7 @@ public class EntityGenerator {
 
     UUID exampleUuid = UUID.fromString("a50a7fbe-1e3b-11b2-9575-f2bfe09fbe21");
 
-    List<String> descriptions = List.of("hotel", "taxi", "air ticket", "meals");
+    List<String> descriptions = List.of("hotel", "taxi", "transportation", "meals", "other");
 
     public List<ExpenseReport> generateReports(int count) {
         List<ExpenseReport> reports = new ArrayList<>();
@@ -42,8 +39,24 @@ public class EntityGenerator {
                     .supply(Select.field(ExpenseReport::getEmployeeId), () -> (employeeId != null ? employeeId : exampleUuid))
                     .supply(Select.field(ExpenseReport::getCity), () -> faker.country().capital())
                     .supply(Select.field(ExpenseReport::getDepartureDate), () -> faker.date().past(1, TimeUnit.DAYS))
-                    .supply(Select.field(ExpenseReport::getExpenseList), () -> List.of(generateExpenseList(3)))
                     .supply(Select.field(ExpenseReport::getTotalAmount), () -> faker.commerce().price(10, 1000))
+                    .create();
+            reports.add(report);
+        }
+        return reports;
+    }
+
+    public List<ExpenseReportNested> generateNestedReports(int count) {
+        List<ExpenseReportNested> reports = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            UUID employeeId = entityIdLists.getRandomEmployeeId();
+            var report = Instancio.of(ExpenseReportNested.class)
+                    .ignore(Select.field(ExpenseReportNested::getId))
+                    .supply(Select.field(ExpenseReportNested::getEmployeeId), () -> (employeeId != null ? employeeId : exampleUuid))
+                    .supply(Select.field(ExpenseReportNested::getCity), () -> faker.country().capital())
+                    .supply(Select.field(ExpenseReportNested::getDepartureDate), () -> faker.date().past(1, TimeUnit.DAYS))
+                    .supply(Select.field(ExpenseReportNested::getExpenseList), () -> List.of(generateExpenseList(3)))
+                    .supply(Select.field(ExpenseReportNested::getTotalAmount), () -> faker.commerce().price(10, 1000))
                     .create();
             reports.add(report);
         }

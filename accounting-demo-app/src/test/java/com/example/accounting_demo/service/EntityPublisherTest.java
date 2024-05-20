@@ -40,6 +40,7 @@ public class EntityPublisherTest {
         assertThat(statusCode1).isEqualTo(HttpStatus.SC_OK);
 
         var report = entityGenerator.generateReports(1);
+//        var report = entityGenerator.generateNestedReports(1);
         HttpResponse response2 = entityPublisher.saveEntitySchema(report);
         int statusCode2 = response2.getStatusLine().getStatusCode();
         assertThat(statusCode2).isEqualTo(HttpStatus.SC_OK);
@@ -58,6 +59,7 @@ public class EntityPublisherTest {
         assertThat(statusCode1).isEqualTo(HttpStatus.SC_OK);
 
         var report = entityGenerator.generateReports(1);
+//        var report = entityGenerator.generateNestedReports(1);
         HttpResponse response2 = entityPublisher.lockEntitySchema(report);
         int statusCode2 = response2.getStatusLine().getStatusCode();
         assertThat(statusCode2).isEqualTo(HttpStatus.SC_OK);
@@ -76,7 +78,6 @@ public class EntityPublisherTest {
         assertThat(response.getStatusLine().getStatusCode()).isEqualTo(HttpStatus.SC_OK);
     }
 
-    //also saves an extra parent entity to local repo, need to add check at saveEntityToRepo()
     @Test
     public void saveBtReportListTest() throws Exception {
         var reports = entityGenerator.generateReports(2);
@@ -148,10 +149,10 @@ public class EntityPublisherTest {
     }
 
     @Test
-    public void workflowTest() throws Exception {
-        var employeesCount = 1;
-        var reportsCount = 1;
-        var transitionsCount = 10;
+    public void flatEntitiesWorkflowTest() throws Exception {
+        var employeesCount = 5;
+        var reportsCount = 20;
+        var transitionsCount = 200;
 
         var employees = entityGenerator.generateEmployees(employeesCount);
         entityPublisher.saveEntities(employees);
@@ -159,7 +160,7 @@ public class EntityPublisherTest {
         var reports = entityGenerator.generateReports(reportsCount);
         entityPublisher.saveEntities(reports);
 
-        //select a random report and push it to a random transition, then take another one and repeat
+        //select a random ExpenseReport and run a random available transition, then take another one and repeat
 
         for (int i = 0; i < transitionsCount; i++) {
             System.out.println("TRANSITION NUMBER: " + i);
@@ -180,7 +181,51 @@ public class EntityPublisherTest {
                         JsonNode jsonNode = mapper.valueToTree(updatedValue);
                         entityService.updateValue(randomReportId, columnPath, jsonNode);
                         break;
-                    case "BOOK_PAYMENT":
+                    case "POST_PAYMENT":
+//                        should be launched by an EP - payment transition "ACCEPT_BY_BANK"
+                        break;
+                    default:
+                        entityService.launchTransition(randomReportId, randomTransition);
+                        break;
+                }
+            }
+        }
+    }
+
+    @Test
+    public void nestedEntitiesWorkflowTest() throws Exception {
+        var employeesCount = 1;
+        var reportsCount = 1;
+        var transitionsCount = 10;
+
+        var employees = entityGenerator.generateEmployees(employeesCount);
+        entityPublisher.saveEntities(employees);
+        //        ExpenseReport is created by an employee
+        var reports = entityGenerator.generateNestedReports(reportsCount);
+        entityPublisher.saveEntities(reports);
+
+        //select a random ExpenseReport and run a random available transition, then take another one and repeat
+
+        for (int i = 0; i < transitionsCount; i++) {
+            System.out.println("TRANSITION NUMBER: " + i);
+
+            var randomReportId = entityIdLists.getRandomExpenseReportId();
+            var availableTransitions = entityService.getListTransitions(randomReportId);
+            System.out.println("Available transitions: " + availableTransitions.toString());
+
+            if (!availableTransitions.isEmpty()) {
+                var randomTransition = random.getRandomElement(availableTransitions);
+                System.out.println("Transition chosen to run: " + randomTransition);
+
+                switch (randomTransition) {
+                    case "UPDATE":
+//            TODO add generating random fields AND update updateValue method to take a list of changes
+                        String columnPath = "values@org#cyoda#entity#model#ValueMaps.strings.[.city]";
+                        String updatedValue = "updatedCity";
+                        JsonNode jsonNode = mapper.valueToTree(updatedValue);
+                        entityService.updateValue(randomReportId, columnPath, jsonNode);
+                        break;
+                    case "POST_PAYMENT":
 //                        should be launched by an EP - payment transition "ACCEPT_BY_BANK"
                         break;
                     default:

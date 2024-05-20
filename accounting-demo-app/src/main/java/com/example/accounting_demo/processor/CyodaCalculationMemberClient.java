@@ -74,11 +74,13 @@ public class CyodaCalculationMemberClient implements DisposableBean, Initializin
 
             @Override
             public void onNext(CloudEvent value) {
-                System.out.println(">> Got EVENT:\n" + value);
+//                System.out.println(">> Got EVENT:\n" + value);
+                System.out.println(">> Got EVENT:\n");
                 switch (value.getType()) {
                     case "EntityProcessorCalculationRequest":
                         try {
                             EntityProcessorCalculationRequest request = objectMapper.readValue(value.getTextData(), EntityProcessorCalculationRequest.class);
+                            System.out.println(request + "\n");
                             BaseEvent response = processor.calculate(request);
                             sendEvent(response);
                         } catch (IOException e) {
@@ -88,6 +90,7 @@ public class CyodaCalculationMemberClient implements DisposableBean, Initializin
                         }
                         break;
                     default:
+                        System.out.println("Event type: " + value.getType());
                         System.out.println("Skipping message as no processing required");
                         break;
                 }
