@@ -9,6 +9,8 @@ import org.cyoda.cloud.api.event.BaseEvent;
 import org.cyoda.cloud.api.event.DataPayload;
 import org.cyoda.cloud.api.event.EntityProcessorCalculationRequest;
 import org.cyoda.cloud.api.event.EntityProcessorCalculationResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -19,15 +21,18 @@ import java.util.UUID;
 
 @Component
 public class CyodaCalculationMemberProcessor {
+    private static final Logger logger = LoggerFactory.getLogger(CyodaCalculationMemberClient.class);
 
-    @Autowired
-    ObjectMapper mapper;
+    private final ObjectMapper mapper;
+    private final EntityPublisher entityPublisher;
+    private final EntityService entityService;
 
-    @Autowired
-    private EntityPublisher entityPublisher;
+    public CyodaCalculationMemberProcessor(ObjectMapper mapper, EntityPublisher entityPublisher, EntityService entityService) {
+        this.mapper = mapper;
+        this.entityPublisher = entityPublisher;
+        this.entityService = entityService;
+    }
 
-    @Autowired
-    private EntityService entityService;
 
     public BaseEvent calculate(EntityProcessorCalculationRequest request) throws IOException, InterruptedException {
         EntityProcessorCalculationResponse response = new EntityProcessorCalculationResponse();
@@ -57,7 +62,7 @@ public class CyodaCalculationMemberProcessor {
                 break;
 
             default:
-                System.out.println("No corresponding processor found");
+                logger.info("No corresponding processor found");
                 break;
         }
 
@@ -73,7 +78,7 @@ public class CyodaCalculationMemberProcessor {
         boolean isEnoughFunds = new Random().nextBoolean();
         var paymentId = UUID.fromString(request.getEntityId());
 
-        System.out.println((entityService.getCurrentState(paymentId) + " is state of payment with id: " + paymentId));
+        logger.info((entityService.getCurrentState(paymentId) + " is state of payment with id: " + paymentId));
 
         if (isEnoughFunds) {
             entityService.launchTransition(UUID.fromString(request.getEntityId()), "ACCEPT_BY_BANK");
@@ -81,12 +86,12 @@ public class CyodaCalculationMemberProcessor {
             entityService.launchTransition(UUID.fromString(request.getEntityId()), "REJECT_BY_BANK");
         }
 
-        System.out.println((entityService.getCurrentState(paymentId) + " is state of payment with id: " + paymentId));
+        logger.info((entityService.getCurrentState(paymentId) + " is state of payment with id: " + paymentId));
     }
 
     //imitates email notification
     public void notifyApprover(EntityProcessorCalculationRequest request) {
-        System.out.println("Report with id: " + request.getEntityId() + " SUBMITTED");
+        logger.info("Report with id: " + request.getEntityId() + " SUBMITTED");
 
     }
 

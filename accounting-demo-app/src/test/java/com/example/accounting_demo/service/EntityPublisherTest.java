@@ -182,7 +182,7 @@ public class EntityPublisherTest {
                         entityService.updateValue(randomReportId, columnPath, jsonNode);
                         break;
                     case "POST_PAYMENT":
-//                        should be launched by an EP - payment transition "ACCEPT_BY_BANK"
+//                        should be launched by an externalized processor - payment transition "ACCEPT_BY_BANK"
                         break;
                     default:
                         entityService.launchTransition(randomReportId, randomTransition);

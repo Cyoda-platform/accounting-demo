@@ -1,5 +1,6 @@
 package com.example.accounting_demo.service;
 
+import com.example.accounting_demo.processor.CyodaCalculationMemberClient;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -15,7 +16,8 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -27,22 +29,29 @@ import java.util.UUID;
 @Component
 public class EntityPublisher {
 
-    @Autowired
-    ObjectMapper mapper;
+    private static final Logger logger = LoggerFactory.getLogger(CyodaCalculationMemberClient.class);
 
-    @Autowired
-    EntityIdLists entityIdLists;
-
-    private String modelVersion = "1";
+    private final String MODEL_VERSION = "1";
     private final CloseableHttpClient httpClient = HttpClients.createDefault();
 
-    @Value("${my.token}")
+    @Value("${cyoda.host}")
+    private String host;
+
+    @Value("${cyoda.token}")
     private String token;
+
+    final ObjectMapper om;
+    final EntityIdLists entityIdLists;
+
+    public EntityPublisher(ObjectMapper om, EntityIdLists entityIdLists) {
+        this.om = om;
+        this.entityIdLists = entityIdLists;
+    }
 
     public <T> HttpResponse saveEntitySchema(List<T> entities) throws IOException {
         String model = getModelForClass(entities);
 
-        String url = String.format("http://localhost:8082/api/treeNode/model/import/JSON/SAMPLE_DATA/%s/%s", model, modelVersion);
+        String url = String.format("%s/api/treeNode/model/import/JSON/SAMPLE_DATA/%s/%s", host, model, MODEL_VERSION);
         HttpPost httpPost = new HttpPost(url);
 
         httpPost.setHeader("Authorization", "Bearer " + token);
@@ -53,7 +62,7 @@ public class EntityPublisher {
         StringEntity entity = new StringEntity(convertListToJson(entities), ContentType.APPLICATION_JSON);
         httpPost.setEntity(entity);
 
-        System.out.println(httpPost);
+        logger.info(om.writeValueAsString(httpPost.toString()));
 
         try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
             return response;
@@ -64,11 +73,11 @@ public class EntityPublisher {
     public <T> HttpResponse lockEntitySchema(List<T> entities) throws IOException {
         String model = getModelForClass(entities);
 
-        String url = String.format("http://localhost:8082/api/treeNode/model/%s/%s/lock", model, modelVersion);
+        String url = String.format("%s/api/treeNode/model/%s/%s/lock", host, model, MODEL_VERSION);
         HttpPut httpPut = new HttpPut(url);
         httpPut.setHeader("Authorization", "Bearer " + token);
 
-        System.out.println(httpPut);
+        logger.info(om.writeValueAsString(httpPut.toString()));
 
         try (CloseableHttpResponse response = httpClient.execute(httpPut)) {
             return response;
@@ -78,7 +87,7 @@ public class EntityPublisher {
     public <T> HttpResponse saveEntities(List<T> entities) throws IOException {
         String model = getModelForClass(entities);
 
-        String url = String.format("http://localhost:8082/api/entity/new/JSON/TREE/%s/%s", model, modelVersion);
+        String url = String.format("%s/api/entity/new/JSON/TREE/%s/%s", host, model, MODEL_VERSION);
         HttpPost httpPost = new HttpPost(url);
 
         httpPost.setHeader("Content-Type", "application/json");
@@ -92,13 +101,13 @@ public class EntityPublisher {
 
         httpPost.setEntity(requestEntity);
 
-        System.out.println(httpPost);
+        logger.info(om.writeValueAsString(httpPost.toString()));
 
         try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
 
             HttpEntity responseEntity = response.getEntity();
             String responseBody = EntityUtils.toString(responseEntity);
-            JsonNode jsonNode = mapper.readTree(responseBody);
+            JsonNode jsonNode = om.readTree(responseBody);
             JsonNode entityIdsNode = jsonNode.get(0).get("entityIds");
 
             List<UUID> entityIdList = new ArrayList<>();
@@ -109,18 +118,18 @@ public class EntityPublisher {
             switch (model) {
                 case "expense_report":
                     entityIdLists.addToExpenseReportIdList(entityIdList);
-                    System.out.println(model + "IdList updated with ids: " + entityIdList);
+                    logger.info(model + "IdList updated with ids: " + entityIdList);
                     break;
                 case "payment":
                     entityIdLists.addToPaymentIdList(entityIdList);
-                    System.out.println(model + "IdList updated with ids: " + entityIdList);
+                    logger.info(model + "IdList updated with ids: " + entityIdList);
                     break;
                 case "employee":
                     entityIdLists.addToEmployeeIdList(entityIdList);
-                    System.out.println(model + "IdList updated with ids: " + entityIdList);
+                    logger.info(model + "IdList updated with ids: " + entityIdList);
                     break;
                 default:
-                    System.out.println("No corresponding entity model found");
+                    logger.info("No corresponding entity model found");
                     break;
             }
 
@@ -129,18 +138,16 @@ public class EntityPublisher {
     }
 
     public <T> String convertListToJson(List<T> entities) throws JsonProcessingException {
-        return mapper.writeValueAsString(entities);
+        return om.writeValueAsString(entities);
     }
 
-    public <T> String convertToJsonAddingRootNode(List<T> entities) {
-        ObjectNode rootNode = mapper.createObjectNode();
+    public <T> String convertToJsonAddingRootNode(List<T> entities) throws Exception{
+        ObjectNode rootNode = om.createObjectNode();
         ObjectNode dataNode = rootNode.putObject("data");
 
-        ArrayNode reportArray = mapper.valueToTree(entities);
+        ArrayNode reportArray = om.valueToTree(entities);
         String dataModel = getModelForClass(entities);
         dataNode.set(dataModel, reportArray);
-
-        System.out.println(rootNode);
 
         return rootNode.toString();
     }

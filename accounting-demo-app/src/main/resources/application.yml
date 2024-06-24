@@ -1,2 +1,8 @@
-my:
+cyoda:
+  host: ${HOST}
   token: ${TOKEN}
+grpc:
+  server:
+    host: ${GRPC_HOST}
+    port: 443
+    tls: true
