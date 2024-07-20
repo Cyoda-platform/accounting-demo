@@ -12,6 +12,6 @@ public class Payment {
 
     @JsonIgnore
     private UUID id;
-    private UUID btReportId;
+    private UUID expenseReportId;
     private String amount;
 }

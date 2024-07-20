@@ -6,9 +6,14 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+
+import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -30,57 +35,69 @@ public class EntityPublisherTest {
     @Autowired
     private Randomizer random;
 
-    private ObjectMapper mapper = new ObjectMapper();
+    private ObjectMapper om = new ObjectMapper();
 
-    @Test
-    public void saveEntitySchemaTest() throws Exception {
+    @BeforeEach
+    void addEntityModels() throws IOException {
+        entityPublisher.deleteAllEntitiesByModel("expense_report");
+        entityPublisher.deleteAllEntitiesByModel("expense_report_nested");
+        entityPublisher.deleteAllEntitiesByModel("employee");
+        entityPublisher.deleteAllEntitiesByModel("payment");
+
+        entityPublisher.deleteEntityModel("expense_report");
+        entityPublisher.deleteEntityModel("expense_report_nested");
+        entityPublisher.deleteEntityModel("employee");
+        entityPublisher.deleteEntityModel("payment");
+
         var employee = entityGenerator.generateEmployees(1);
-        HttpResponse response1 = entityPublisher.saveEntitySchema(employee);
-        int statusCode1 = response1.getStatusLine().getStatusCode();
-        assertThat(statusCode1).isEqualTo(HttpStatus.SC_OK);
+        entityPublisher.saveEntitySchema(employee);
+        entityPublisher.lockEntitySchema(employee);
 
         var report = entityGenerator.generateReports(1);
-//        var report = entityGenerator.generateNestedReports(1);
-        HttpResponse response2 = entityPublisher.saveEntitySchema(report);
-        int statusCode2 = response2.getStatusLine().getStatusCode();
-        assertThat(statusCode2).isEqualTo(HttpStatus.SC_OK);
+        entityPublisher.saveEntitySchema(report);
+        entityPublisher.lockEntitySchema(report);
+
+        var report_nested = entityGenerator.generateNestedReports(1);
+        entityPublisher.saveEntitySchema(report_nested);
+        entityPublisher.lockEntitySchema(report_nested);
 
         var payment = entityGenerator.generatePayments(1);
-        HttpResponse response3 = entityPublisher.saveEntitySchema(payment);
-        int statusCode3 = response3.getStatusLine().getStatusCode();
-        assertThat(statusCode3).isEqualTo(HttpStatus.SC_OK);
+        entityPublisher.saveEntitySchema(payment);
+        entityPublisher.lockEntitySchema(payment);
     }
 
-    @Test
-    public void lockEntitySchemaTest() throws Exception {
-        var employee = entityGenerator.generateEmployees(1);
-        HttpResponse response1 = entityPublisher.lockEntitySchema(employee);
-        int statusCode1 = response1.getStatusLine().getStatusCode();
-        assertThat(statusCode1).isEqualTo(HttpStatus.SC_OK);
+    @AfterEach
+    void deleteEntitiesAndModels() throws Exception {
+        entityPublisher.deleteAllEntitiesByModel("expense_report");
+        entityPublisher.deleteAllEntitiesByModel("expense_report_nested");
+        entityPublisher.deleteAllEntitiesByModel("employee");
+        entityPublisher.deleteAllEntitiesByModel("payment");
 
-        var report = entityGenerator.generateReports(1);
-//        var report = entityGenerator.generateNestedReports(1);
-        HttpResponse response2 = entityPublisher.lockEntitySchema(report);
-        int statusCode2 = response2.getStatusLine().getStatusCode();
-        assertThat(statusCode2).isEqualTo(HttpStatus.SC_OK);
-
-        var payment = entityGenerator.generatePayments(1);
-        HttpResponse response3 = entityPublisher.lockEntitySchema(payment);
-        int statusCode3 = response3.getStatusLine().getStatusCode();
-        assertThat(statusCode3).isEqualTo(HttpStatus.SC_OK);
+        entityPublisher.deleteEntityModel("expense_report");
+        entityPublisher.deleteEntityModel("expense_report_nested");
+        entityPublisher.deleteEntityModel("employee");
+        entityPublisher.deleteEntityModel("payment");
     }
 
     @Test
     public void saveEmployeeListTest() throws Exception {
-        var employees = entityGenerator.generateEmployees(1);
+        var employees = entityGenerator.generateEmployees(5);
         HttpResponse response = entityPublisher.saveEntities(employees);
 
         assertThat(response.getStatusLine().getStatusCode()).isEqualTo(HttpStatus.SC_OK);
     }
 
     @Test
-    public void saveBtReportListTest() throws Exception {
-        var reports = entityGenerator.generateReports(2);
+    public void saveExpenseReportListTest() throws Exception {
+        var reports = entityGenerator.generateReports(5);
+        HttpResponse response = entityPublisher.saveEntities(reports);
+
+        assertThat(response.getStatusLine().getStatusCode()).isEqualTo(HttpStatus.SC_OK);
+    }
+
+    @Test
+    public void saveNestedExpenseReportListTest() throws Exception {
+        var reports = entityGenerator.generateNestedReports(5);
         HttpResponse response = entityPublisher.saveEntities(reports);
 
         assertThat(response.getStatusLine().getStatusCode()).isEqualTo(HttpStatus.SC_OK);
@@ -88,8 +105,8 @@ public class EntityPublisherTest {
 
     @Test
     public void savePaymentListTest() throws Exception {
-        var payment = entityGenerator.generatePayments(1);
-        HttpResponse response = entityPublisher.saveEntities(payment);
+        var payments = entityGenerator.generatePayments(5);
+        HttpResponse response = entityPublisher.saveEntities(payments);
 
         assertThat(response.getStatusLine().getStatusCode()).isEqualTo(HttpStatus.SC_OK);
     }
@@ -110,7 +127,6 @@ public class EntityPublisherTest {
 
         assertThat(statusCode2).isEqualTo(HttpStatus.SC_OK);
         assertThat(statusBeforeTransition).isNotEqualTo(statusAfterTransition);
-
     }
 
     @Test
@@ -138,7 +154,7 @@ public class EntityPublisherTest {
         var savedReportId = entityIdLists.getExpenseReportIdList().get(0);
         String updatedValue = "updatedCity";
 
-        JsonNode jsonNode = mapper.valueToTree(updatedValue);
+        JsonNode jsonNode = om.valueToTree(updatedValue);
 
         HttpResponse response2 = entityService.updateValue(savedReportId, columnPath, jsonNode);
 
@@ -149,20 +165,48 @@ public class EntityPublisherTest {
     }
 
     @Test
-    public void flatEntitiesWorkflowTest() throws Exception {
-        var employeesCount = 5;
-        var reportsCount = 20;
-        var transitionsCount = 200;
+    public void deleteTest() throws Exception {
+        var employeeList = entityGenerator.generateEmployees(1);
+        HttpResponse response1 = entityPublisher.saveEntities(employeeList);
+        assertThat(response1.getStatusLine().getStatusCode()).isEqualTo(HttpStatus.SC_OK);
 
-        var employees = entityGenerator.generateEmployees(employeesCount);
+        HttpResponse response2 = entityPublisher.deleteAllEntitiesByModel(employeeList);
+
+        assertThat(response2.getStatusLine().getStatusCode()).isEqualTo(HttpStatus.SC_OK);
+    }
+
+    @Test
+    public void deleteEntityByRootId() throws Exception {
+
+        var nEmployees = 1;
+        var nReports = 1;
+
+        var employees = entityGenerator.generateEmployees(nEmployees);
+        entityPublisher.saveEntities(employees);
+        var reports = entityGenerator.generateNestedReports(nReports);
+        entityPublisher.saveEntities(reports);
+
+        var id = entityIdLists.getRandomExpenseReportId().toString();
+
+        HttpResponse response1 = entityPublisher.deleteEntityByRootId("expense_report_nested", "1", id);
+        assertThat(response1.getStatusLine().getStatusCode()).isEqualTo(HttpStatus.SC_OK);
+    }
+
+    @Test
+    public void flatEntitiesWorkflowTest() throws Exception {
+        var nEmployees = 10;
+        var nReports = 40;
+        var nTransitions = 200;
+
+        var employees = entityGenerator.generateEmployees(nEmployees);
         entityPublisher.saveEntities(employees);
         //        ExpenseReport is created by an employee
-        var reports = entityGenerator.generateReports(reportsCount);
+        var reports = entityGenerator.generateReports(nReports);
         entityPublisher.saveEntities(reports);
 
         //select a random ExpenseReport and run a random available transition, then take another one and repeat
 
-        for (int i = 0; i < transitionsCount; i++) {
+        for (int i = 0; i < nTransitions; i++) {
             System.out.println("TRANSITION NUMBER: " + i);
 
             var randomReportId = entityIdLists.getRandomExpenseReportId();
@@ -178,7 +222,7 @@ public class EntityPublisherTest {
 //            TODO add generating random fields AND update updateValue method to take a list of changes
                         String columnPath = "values@org#cyoda#entity#model#ValueMaps.strings.[.city]";
                         String updatedValue = "updatedCity";
-                        JsonNode jsonNode = mapper.valueToTree(updatedValue);
+                        JsonNode jsonNode = om.valueToTree(updatedValue);
                         entityService.updateValue(randomReportId, columnPath, jsonNode);
                         break;
                     case "POST_PAYMENT":
@@ -194,19 +238,19 @@ public class EntityPublisherTest {
 
     @Test
     public void nestedEntitiesWorkflowTest() throws Exception {
-        var employeesCount = 1;
-        var reportsCount = 1;
-        var transitionsCount = 10;
+        var nEmployees = 1;
+        var nReports = 1;
+        var nTransitions = 1;
 
-        var employees = entityGenerator.generateEmployees(employeesCount);
+        var employees = entityGenerator.generateEmployees(nEmployees);
         entityPublisher.saveEntities(employees);
         //        ExpenseReport is created by an employee
-        var reports = entityGenerator.generateNestedReports(reportsCount);
+        var reports = entityGenerator.generateNestedReports(nReports);
         entityPublisher.saveEntities(reports);
 
         //select a random ExpenseReport and run a random available transition, then take another one and repeat
 
-        for (int i = 0; i < transitionsCount; i++) {
+        for (int i = 0; i < nTransitions; i++) {
             System.out.println("TRANSITION NUMBER: " + i);
 
             var randomReportId = entityIdLists.getRandomExpenseReportId();
@@ -222,7 +266,7 @@ public class EntityPublisherTest {
 //            TODO add generating random fields AND update updateValue method to take a list of changes
                         String columnPath = "values@org#cyoda#entity#model#ValueMaps.strings.[.city]";
                         String updatedValue = "updatedCity";
-                        JsonNode jsonNode = mapper.valueToTree(updatedValue);
+                        JsonNode jsonNode = om.valueToTree(updatedValue);
                         entityService.updateValue(randomReportId, columnPath, jsonNode);
                         break;
                     case "POST_PAYMENT":
@@ -235,5 +279,4 @@ public class EntityPublisherTest {
             }
         }
     }
-
 }

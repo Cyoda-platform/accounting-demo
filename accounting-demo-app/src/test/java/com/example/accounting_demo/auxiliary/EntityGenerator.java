@@ -55,8 +55,8 @@ public class EntityGenerator {
                     .supply(Select.field(ExpenseReportNested::getEmployeeId), () -> (employeeId != null ? employeeId : exampleUuid))
                     .supply(Select.field(ExpenseReportNested::getCity), () -> faker.country().capital())
                     .supply(Select.field(ExpenseReportNested::getDepartureDate), () -> faker.date().past(1, TimeUnit.DAYS))
-                    .supply(Select.field(ExpenseReportNested::getExpenseList), () -> List.of(generateExpenseList(3)))
-                    .supply(Select.field(ExpenseReportNested::getTotalAmount), () -> faker.commerce().price(10, 1000))
+                    .supply(Select.field(ExpenseReportNested::getExpenseList), () -> generateExpenseList(1001))
+                    .supply(Select.field(ExpenseReportNested::getTotalAmount), () -> "0.00")
                     .create();
             reports.add(report);
         }
@@ -66,12 +66,14 @@ public class EntityGenerator {
     //given id is used for setting a new entity schema (Time UUID)
     public List<Payment> generatePayments(int count) {
         List<Payment> payments = new ArrayList<>();
-        var payment = Instancio.of(Payment.class)
-                .ignore(Select.field(Payment::getId))
-                .supply(Select.field(Payment::getBtReportId), () -> exampleUuid)
-                .supply(Select.field(Payment::getAmount), () -> faker.commerce().price(10, 1000))
-                .create();
-        payments.add(payment);
+        for (int i = 0; i < count; i++) {
+            var payment = Instancio.of(Payment.class)
+                    .ignore(Select.field(Payment::getId))
+                    .supply(Select.field(Payment::getExpenseReportId), () -> exampleUuid)
+                    .supply(Select.field(Payment::getAmount), () -> faker.commerce().price(10, 1000))
+                    .create();
+            payments.add(payment);
+        }
         return payments;
     }
 

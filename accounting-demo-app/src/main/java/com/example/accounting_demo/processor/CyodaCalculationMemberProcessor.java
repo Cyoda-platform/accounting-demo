@@ -2,6 +2,7 @@ package com.example.accounting_demo.processor;
 
 import com.example.accounting_demo.model.ExpenseReport;
 import com.example.accounting_demo.model.Payment;
+import com.example.accounting_demo.service.EntityIdLists;
 import com.example.accounting_demo.service.EntityPublisher;
 import com.example.accounting_demo.service.EntityService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -11,7 +12,6 @@ import org.cyoda.cloud.api.event.EntityProcessorCalculationRequest;
 import org.cyoda.cloud.api.event.EntityProcessorCalculationResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -26,11 +26,13 @@ public class CyodaCalculationMemberProcessor {
     private final ObjectMapper mapper;
     private final EntityPublisher entityPublisher;
     private final EntityService entityService;
+    final EntityIdLists entityIdLists;
 
-    public CyodaCalculationMemberProcessor(ObjectMapper mapper, EntityPublisher entityPublisher, EntityService entityService) {
+    public CyodaCalculationMemberProcessor(ObjectMapper mapper, EntityPublisher entityPublisher, EntityService entityService, EntityIdLists entityIdLists) {
         this.mapper = mapper;
         this.entityPublisher = entityPublisher;
         this.entityService = entityService;
+        this.entityIdLists = entityIdLists;
     }
 
 
@@ -60,6 +62,9 @@ public class CyodaCalculationMemberProcessor {
             case "postPayment":
                 postPayment(request);
                 break;
+            case "createRootEntity":
+                saveRootId(request);
+                break;
 
             default:
                 logger.info("No corresponding processor found");
@@ -69,9 +74,15 @@ public class CyodaCalculationMemberProcessor {
         return response;
     }
 
+    private void saveRootId(EntityProcessorCalculationRequest request) {
+        var id = UUID.fromString(request.getEntityId());
+        entityIdLists.addToExpenseReportIdList(List.of(id));
+        logger.info("IdList updated with id: {}", id);
+    }
+
     private void postPayment(EntityProcessorCalculationRequest request) throws IOException {
-        var travelReportId = entityService.getValue(UUID.fromString(request.getEntityId()), "values@org#cyoda#entity#model#ValueMaps.timeuuids.[.btReportId]");
-        entityService.launchTransition(UUID.fromString(travelReportId), "POST_PAYMENT");
+        var expenseReportId = entityService.getValue(UUID.fromString(request.getEntityId()), "values@org#cyoda#entity#model#ValueMaps.timeuuids.[.expenseReportId]");
+        entityService.launchTransition(UUID.fromString(expenseReportId), "POST_PAYMENT");
     }
 
     private void sendToBank(EntityProcessorCalculationRequest request) throws IOException, InterruptedException {
@@ -104,7 +115,7 @@ public class CyodaCalculationMemberProcessor {
         String totalAmount = report.getTotalAmount();
         
         Payment payment = new Payment();
-        payment.setBtReportId(UUID.fromString(request.getEntityId()));
+        payment.setExpenseReportId(UUID.fromString(request.getEntityId()));
         payment.setAmount(totalAmount);
 
         entityPublisher.saveEntities(List.of(payment));
