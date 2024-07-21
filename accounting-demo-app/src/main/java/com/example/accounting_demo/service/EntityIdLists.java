@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.Random;
 import java.util.UUID;
 
+//temporarily used as a workaround while there is no search with ID
+
 @Component
 @Getter
 @Setter

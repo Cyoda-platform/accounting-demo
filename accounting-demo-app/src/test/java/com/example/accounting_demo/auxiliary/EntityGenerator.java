@@ -55,7 +55,7 @@ public class EntityGenerator {
                     .supply(Select.field(ExpenseReportNested::getEmployeeId), () -> (employeeId != null ? employeeId : exampleUuid))
                     .supply(Select.field(ExpenseReportNested::getCity), () -> faker.country().capital())
                     .supply(Select.field(ExpenseReportNested::getDepartureDate), () -> faker.date().past(1, TimeUnit.DAYS))
-                    .supply(Select.field(ExpenseReportNested::getExpenseList), () -> generateExpenseList(1001))
+                    .supply(Select.field(ExpenseReportNested::getExpenseList), () -> generateExpenseList(2))
                     .supply(Select.field(ExpenseReportNested::getTotalAmount), () -> "0.00")
                     .create();
             reports.add(report);

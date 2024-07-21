@@ -3,7 +3,6 @@ package com.example.accounting_demo.processor;
 import com.example.accounting_demo.model.ExpenseReport;
 import com.example.accounting_demo.model.Payment;
 import com.example.accounting_demo.service.EntityIdLists;
-import com.example.accounting_demo.service.EntityPublisher;
 import com.example.accounting_demo.service.EntityService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.cyoda.cloud.api.event.BaseEvent;
@@ -24,13 +23,11 @@ public class CyodaCalculationMemberProcessor {
     private static final Logger logger = LoggerFactory.getLogger(CyodaCalculationMemberClient.class);
 
     private final ObjectMapper mapper;
-    private final EntityPublisher entityPublisher;
     private final EntityService entityService;
     final EntityIdLists entityIdLists;
 
-    public CyodaCalculationMemberProcessor(ObjectMapper mapper, EntityPublisher entityPublisher, EntityService entityService, EntityIdLists entityIdLists) {
+    public CyodaCalculationMemberProcessor(ObjectMapper mapper, EntityService entityService, EntityIdLists entityIdLists) {
         this.mapper = mapper;
-        this.entityPublisher = entityPublisher;
         this.entityService = entityService;
         this.entityIdLists = entityIdLists;
     }
@@ -85,7 +82,7 @@ public class CyodaCalculationMemberProcessor {
         entityService.launchTransition(UUID.fromString(expenseReportId), "POST_PAYMENT");
     }
 
-    private void sendToBank(EntityProcessorCalculationRequest request) throws IOException, InterruptedException {
+    private void sendToBank(EntityProcessorCalculationRequest request) throws IOException {
         boolean isEnoughFunds = new Random().nextBoolean();
         var paymentId = UUID.fromString(request.getEntityId());
 
@@ -118,7 +115,7 @@ public class CyodaCalculationMemberProcessor {
         payment.setExpenseReportId(UUID.fromString(request.getEntityId()));
         payment.setAmount(totalAmount);
 
-        entityPublisher.saveEntities(List.of(payment));
+        entityService.saveEntities(List.of(payment));
     }
 
 }

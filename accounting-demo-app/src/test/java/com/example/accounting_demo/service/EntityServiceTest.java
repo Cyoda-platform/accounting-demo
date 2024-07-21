@@ -13,18 +13,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import java.io.IOException;
-import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
-public class EntityPublisherTest {
+public class EntityServiceTest {
 
     @Autowired
     private EntityGenerator entityGenerator;
-
-    @Autowired
-    private EntityPublisher entityPublisher;
 
     @Autowired
     private EntityService entityService;
@@ -39,50 +35,50 @@ public class EntityPublisherTest {
 
     @BeforeEach
     void addEntityModels() throws IOException {
-        entityPublisher.deleteAllEntitiesByModel("expense_report");
-        entityPublisher.deleteAllEntitiesByModel("expense_report_nested");
-        entityPublisher.deleteAllEntitiesByModel("employee");
-        entityPublisher.deleteAllEntitiesByModel("payment");
+        entityService.deleteAllEntitiesByModel("expense_report");
+        entityService.deleteAllEntitiesByModel("expense_report_nested");
+        entityService.deleteAllEntitiesByModel("employee");
+        entityService.deleteAllEntitiesByModel("payment");
 
-        entityPublisher.deleteEntityModel("expense_report");
-        entityPublisher.deleteEntityModel("expense_report_nested");
-        entityPublisher.deleteEntityModel("employee");
-        entityPublisher.deleteEntityModel("payment");
+        entityService.deleteEntityModel("expense_report");
+        entityService.deleteEntityModel("expense_report_nested");
+        entityService.deleteEntityModel("employee");
+        entityService.deleteEntityModel("payment");
 
         var employee = entityGenerator.generateEmployees(1);
-        entityPublisher.saveEntitySchema(employee);
-        entityPublisher.lockEntitySchema(employee);
+        entityService.saveEntitySchema(employee);
+        entityService.lockEntitySchema(employee);
 
         var report = entityGenerator.generateReports(1);
-        entityPublisher.saveEntitySchema(report);
-        entityPublisher.lockEntitySchema(report);
+        entityService.saveEntitySchema(report);
+        entityService.lockEntitySchema(report);
 
         var report_nested = entityGenerator.generateNestedReports(1);
-        entityPublisher.saveEntitySchema(report_nested);
-        entityPublisher.lockEntitySchema(report_nested);
+        entityService.saveEntitySchema(report_nested);
+        entityService.lockEntitySchema(report_nested);
 
         var payment = entityGenerator.generatePayments(1);
-        entityPublisher.saveEntitySchema(payment);
-        entityPublisher.lockEntitySchema(payment);
+        entityService.saveEntitySchema(payment);
+        entityService.lockEntitySchema(payment);
     }
 
     @AfterEach
     void deleteEntitiesAndModels() throws Exception {
-        entityPublisher.deleteAllEntitiesByModel("expense_report");
-        entityPublisher.deleteAllEntitiesByModel("expense_report_nested");
-        entityPublisher.deleteAllEntitiesByModel("employee");
-        entityPublisher.deleteAllEntitiesByModel("payment");
+        entityService.deleteAllEntitiesByModel("expense_report");
+        entityService.deleteAllEntitiesByModel("expense_report_nested");
+        entityService.deleteAllEntitiesByModel("employee");
+        entityService.deleteAllEntitiesByModel("payment");
 
-        entityPublisher.deleteEntityModel("expense_report");
-        entityPublisher.deleteEntityModel("expense_report_nested");
-        entityPublisher.deleteEntityModel("employee");
-        entityPublisher.deleteEntityModel("payment");
+        entityService.deleteEntityModel("expense_report");
+        entityService.deleteEntityModel("expense_report_nested");
+        entityService.deleteEntityModel("employee");
+        entityService.deleteEntityModel("payment");
     }
 
     @Test
     public void saveEmployeeListTest() throws Exception {
         var employees = entityGenerator.generateEmployees(5);
-        HttpResponse response = entityPublisher.saveEntities(employees);
+        HttpResponse response = entityService.saveEntities(employees);
 
         assertThat(response.getStatusLine().getStatusCode()).isEqualTo(HttpStatus.SC_OK);
     }
@@ -90,7 +86,7 @@ public class EntityPublisherTest {
     @Test
     public void saveExpenseReportListTest() throws Exception {
         var reports = entityGenerator.generateReports(5);
-        HttpResponse response = entityPublisher.saveEntities(reports);
+        HttpResponse response = entityService.saveEntities(reports);
 
         assertThat(response.getStatusLine().getStatusCode()).isEqualTo(HttpStatus.SC_OK);
     }
@@ -98,7 +94,7 @@ public class EntityPublisherTest {
     @Test
     public void saveNestedExpenseReportListTest() throws Exception {
         var reports = entityGenerator.generateNestedReports(5);
-        HttpResponse response = entityPublisher.saveEntities(reports);
+        HttpResponse response = entityService.saveEntities(reports);
 
         assertThat(response.getStatusLine().getStatusCode()).isEqualTo(HttpStatus.SC_OK);
     }
@@ -106,7 +102,7 @@ public class EntityPublisherTest {
     @Test
     public void savePaymentListTest() throws Exception {
         var payments = entityGenerator.generatePayments(5);
-        HttpResponse response = entityPublisher.saveEntities(payments);
+        HttpResponse response = entityService.saveEntities(payments);
 
         assertThat(response.getStatusLine().getStatusCode()).isEqualTo(HttpStatus.SC_OK);
     }
@@ -114,7 +110,7 @@ public class EntityPublisherTest {
     @Test
     public void launchTransitionTest() throws Exception {
         var report = entityGenerator.generateReports(1);
-        HttpResponse response1 = entityPublisher.saveEntities(report);
+        HttpResponse response1 = entityService.saveEntities(report);
         int statusCode1 = response1.getStatusLine().getStatusCode();
         assertThat(statusCode1).isEqualTo(HttpStatus.SC_OK);
 
@@ -132,7 +128,7 @@ public class EntityPublisherTest {
     @Test
     public void getValueTest() throws Exception {
         var report = entityGenerator.generateReports(1);
-        HttpResponse response = entityPublisher.saveEntities(report);
+        HttpResponse response = entityService.saveEntities(report);
         assertThat(response.getStatusLine().getStatusCode()).isEqualTo(HttpStatus.SC_OK);
 
         var savedReportId = entityIdLists.getExpenseReportIdList().get(0);
@@ -146,7 +142,7 @@ public class EntityPublisherTest {
     @Test
     public void updateValueTest() throws Exception {
         var report = entityGenerator.generateReports(1);
-        HttpResponse response1 = entityPublisher.saveEntities(report);
+        HttpResponse response1 = entityService.saveEntities(report);
         assertThat(response1.getStatusLine().getStatusCode()).isEqualTo(HttpStatus.SC_OK);
 
         String columnPath = "values@org#cyoda#entity#model#ValueMaps.strings.[.city]";
@@ -167,10 +163,10 @@ public class EntityPublisherTest {
     @Test
     public void deleteTest() throws Exception {
         var employeeList = entityGenerator.generateEmployees(1);
-        HttpResponse response1 = entityPublisher.saveEntities(employeeList);
+        HttpResponse response1 = entityService.saveEntities(employeeList);
         assertThat(response1.getStatusLine().getStatusCode()).isEqualTo(HttpStatus.SC_OK);
 
-        HttpResponse response2 = entityPublisher.deleteAllEntitiesByModel(employeeList);
+        HttpResponse response2 = entityService.deleteAllEntitiesByModel(employeeList);
 
         assertThat(response2.getStatusLine().getStatusCode()).isEqualTo(HttpStatus.SC_OK);
     }
@@ -182,13 +178,13 @@ public class EntityPublisherTest {
         var nReports = 1;
 
         var employees = entityGenerator.generateEmployees(nEmployees);
-        entityPublisher.saveEntities(employees);
+        entityService.saveEntities(employees);
         var reports = entityGenerator.generateNestedReports(nReports);
-        entityPublisher.saveEntities(reports);
+        entityService.saveEntities(reports);
 
         var id = entityIdLists.getRandomExpenseReportId().toString();
 
-        HttpResponse response1 = entityPublisher.deleteEntityByRootId("expense_report_nested", "1", id);
+        HttpResponse response1 = entityService.deleteEntityByRootId("expense_report_nested", "1", id);
         assertThat(response1.getStatusLine().getStatusCode()).isEqualTo(HttpStatus.SC_OK);
     }
 
@@ -199,10 +195,10 @@ public class EntityPublisherTest {
         var nTransitions = 200;
 
         var employees = entityGenerator.generateEmployees(nEmployees);
-        entityPublisher.saveEntities(employees);
+        entityService.saveEntities(employees);
         //        ExpenseReport is created by an employee
         var reports = entityGenerator.generateReports(nReports);
-        entityPublisher.saveEntities(reports);
+        entityService.saveEntities(reports);
 
         //select a random ExpenseReport and run a random available transition, then take another one and repeat
 
@@ -238,15 +234,15 @@ public class EntityPublisherTest {
 
     @Test
     public void nestedEntitiesWorkflowTest() throws Exception {
-        var nEmployees = 1;
-        var nReports = 1;
-        var nTransitions = 1;
+        var nEmployees = 5;
+        var nReports = 15;
+        var nTransitions = 50;
 
         var employees = entityGenerator.generateEmployees(nEmployees);
-        entityPublisher.saveEntities(employees);
+        entityService.saveEntities(employees);
         //        ExpenseReport is created by an employee
         var reports = entityGenerator.generateNestedReports(nReports);
-        entityPublisher.saveEntities(reports);
+        entityService.saveEntities(reports);
 
         //select a random ExpenseReport and run a random available transition, then take another one and repeat
 
