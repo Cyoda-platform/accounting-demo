@@ -247,8 +247,7 @@ public class EntityService {
             String responseBody = EntityUtils.toString(entity).trim();
             JsonNode jsonNode = om.readTree(responseBody);
 
-            String snapshotId = jsonNode.asText();
-            return snapshotId;
+            return jsonNode.asText();
         }
     }
 

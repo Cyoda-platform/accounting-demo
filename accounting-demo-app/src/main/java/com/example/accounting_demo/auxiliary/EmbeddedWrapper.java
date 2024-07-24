@@ -1,12 +1,10 @@
 package com.example.accounting_demo.auxiliary;
 
-import com.example.accounting_demo.model.ExpenseReportNested;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.util.List;
-import java.util.UUID;
 
 @Getter
 @Setter
