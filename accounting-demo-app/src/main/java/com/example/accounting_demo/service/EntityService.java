@@ -1,5 +1,6 @@
 package com.example.accounting_demo.service;
 
+import com.example.accounting_demo.auxiliary.SearchConditionRequest;
 import com.example.accounting_demo.processor.CyodaCalculationMemberClient;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -229,28 +230,41 @@ public class EntityService {
         }
     }
 
-//    public HttpResponse getEntitiesByCondition(String model, String version) throws IOException {
-//        String url = String.format("%s/api/treeNode/search/snapshot/%s/%s", model, version);
-//        HttpPost httpPost = new HttpPost(url);
-//        httpPost.setConfig(requestConfig);
-//        httpPost.setHeader("Authorization", "Bearer " + token);
-//
-//        logger.info(om.writeValueAsString(httpPost.toString()));
-//
-//        try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
-//            HttpEntity entity = response.getEntity();
-//            String responseBody = EntityUtils.toString(entity);
-//            JsonNode jsonNode = om.readTree(responseBody);
-//
-//            if (jsonNode.isArray()) {
-//                for (JsonNode node : jsonNode) {
-//                    stringList.add(node.asText());
-//                }
-//            }
-//        }
-//
-//        return stringList;
-//    }
+    public String runSearchAndGetSnapshotId(String model, String version, SearchConditionRequest searchConditionRequest) throws IOException {
+        String url = String.format("%s/api/treeNode/search/snapshot/%s/%s", host, model, version);
+        HttpPost httpPost = new HttpPost(url);
+        httpPost.setConfig(requestConfig);
+        httpPost.setHeader("Content-Type", "application/json");
+        httpPost.setHeader("Authorization", "Bearer " + token);
+
+        String json = om.writeValueAsString(searchConditionRequest);
+        httpPost.setEntity(new StringEntity(json));
+
+        logger.info(om.writeValueAsString(httpPost.toString()));
+
+        try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
+            HttpEntity entity = response.getEntity();
+            String responseBody = EntityUtils.toString(entity).trim();
+            JsonNode jsonNode = om.readTree(responseBody);
+
+            String snapshotId = jsonNode.asText();
+            return snapshotId;
+        }
+    }
+
+    public String getSearchResultAsJson(String snapshotId) throws IOException {
+        String url = String.format("%s/api/treeNode/search/snapshot/%s", host, snapshotId);
+        HttpGet httpGet = new HttpGet(url);
+        httpGet.setConfig(requestConfig);
+        httpGet.setHeader("Authorization", "Bearer " + token);
+
+        logger.info(om.writeValueAsString(httpGet.toString()));
+
+        try (CloseableHttpResponse response = httpClient.execute(httpGet)) {
+            HttpEntity entity = response.getEntity();
+            return EntityUtils.toString(entity);
+        }
+    }
 
     public HttpResponse launchTransition(UUID id, String transition) throws IOException {
 

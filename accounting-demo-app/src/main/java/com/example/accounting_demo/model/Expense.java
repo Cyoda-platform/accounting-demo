@@ -8,4 +8,12 @@ import lombok.Setter;
 public class Expense {
     private String description;
     private String amount;
+
+    @Override
+    public String toString() {
+        return "Expense{" +
+                "description='" + description + '\'' +
+                ", amount='" + amount + '\'' +
+                '}';
+    }
 }

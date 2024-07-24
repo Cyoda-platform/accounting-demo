@@ -10,10 +10,8 @@ import java.util.UUID;
 
 @Getter
 @Setter
-public class ExpenseReportNested {
+public class ExpenseReportNested extends BaseEntity {
 
-    @JsonIgnore
-    private UUID id;
     private UUID employeeId;
     private String city;
     private Timestamp departureDate;
@@ -22,11 +20,12 @@ public class ExpenseReportNested {
 
     @Override
     public String toString() {
-        return "ExpenseReport{" +
-                "id=" + id +
+        return "ExpenseReportNested{" +
+                "id=" + super.getId() +
                 ", employeeId='" + employeeId + '\'' +
                 ", city='" + city + '\'' +
                 ", departureDate=" + departureDate +
+                ", expenseList=" + expenseList +
                 ", totalAmount='" + totalAmount + '\'' +
                 '}';
     }

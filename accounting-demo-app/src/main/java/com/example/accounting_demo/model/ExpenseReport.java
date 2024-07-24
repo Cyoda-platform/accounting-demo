@@ -9,10 +9,8 @@ import java.util.UUID;
 
 @Getter
 @Setter
-public class ExpenseReport {
+public class ExpenseReport extends BaseEntity {
 
-    @JsonIgnore
-    private UUID id;
     private UUID employeeId;
     private String city;
     private Timestamp departureDate;
@@ -21,7 +19,7 @@ public class ExpenseReport {
     @Override
     public String toString() {
         return "ExpenseReport{" +
-                "id=" + id +
+                "id=" + super.getId() +
                 ", employeeId='" + employeeId + '\'' +
                 ", city='" + city + '\'' +
                 ", departureDate=" + departureDate +

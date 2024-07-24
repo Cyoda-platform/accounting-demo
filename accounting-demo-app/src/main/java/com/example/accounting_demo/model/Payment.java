@@ -8,10 +8,17 @@ import java.util.UUID;
 
 @Getter
 @Setter
-public class Payment {
+public class Payment extends BaseEntity {
 
-    @JsonIgnore
-    private UUID id;
     private UUID expenseReportId;
     private String amount;
+
+    @Override
+    public String toString() {
+        return "Payment{" +
+                "id=" + super.getId() +
+                ", expenseReportId='" + expenseReportId + '\'' +
+                ", amount='" + amount + '\'' +
+                '}';
+    }
 }

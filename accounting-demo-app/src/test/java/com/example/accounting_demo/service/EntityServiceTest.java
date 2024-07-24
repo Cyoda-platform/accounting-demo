@@ -1,7 +1,7 @@
 package com.example.accounting_demo.service;
 
-import com.example.accounting_demo.auxiliary.EntityGenerator;
-import com.example.accounting_demo.auxiliary.Randomizer;
+import com.example.accounting_demo.auxiliary.*;
+import com.example.accounting_demo.model.ExpenseReportNested;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.HttpResponse;
@@ -13,6 +13,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -30,6 +32,9 @@ public class EntityServiceTest {
 
     @Autowired
     private Randomizer random;
+
+    @Autowired
+    private JsonToEntityParser jsonToEntityParser;
 
     private ObjectMapper om = new ObjectMapper();
 
@@ -203,7 +208,7 @@ public class EntityServiceTest {
         //select a random ExpenseReport and run a random available transition, then take another one and repeat
 
         for (int i = 0; i < nTransitions; i++) {
-            System.out.println("TRANSITION NUMBER: " + i);
+            System.out.println("\nTRANSITION NUMBER: " + i);
 
             var randomReportId = entityIdLists.getRandomExpenseReportId();
             var availableTransitions = entityService.getListTransitions(randomReportId);
@@ -247,32 +252,60 @@ public class EntityServiceTest {
         //select a random ExpenseReport and run a random available transition, then take another one and repeat
 
         for (int i = 0; i < nTransitions; i++) {
-            System.out.println("TRANSITION NUMBER: " + i);
+            System.out.println("\nTRANSITION NUMBER: " + i);
 
             var randomReportId = entityIdLists.getRandomExpenseReportId();
             var availableTransitions = entityService.getListTransitions(randomReportId);
             System.out.println("Available transitions: " + availableTransitions.toString());
 
-            if (!availableTransitions.isEmpty()) {
-                var randomTransition = random.getRandomElement(availableTransitions);
-                System.out.println("Transition chosen to run: " + randomTransition);
+            try {
+                if (!availableTransitions.isEmpty()) {
+                    var randomTransition = random.getRandomElement(availableTransitions);
+                    System.out.println("Transition chosen to run: " + randomTransition);
 
-                switch (randomTransition) {
-                    case "UPDATE":
+                    switch (randomTransition) {
+                        case "UPDATE":
 //            TODO add generating random fields AND update updateValue method to take a list of changes
-                        String columnPath = "values@org#cyoda#entity#model#ValueMaps.strings.[.city]";
-                        String updatedValue = "updatedCity";
-                        JsonNode jsonNode = om.valueToTree(updatedValue);
-                        entityService.updateValue(randomReportId, columnPath, jsonNode);
-                        break;
-                    case "POST_PAYMENT":
+                            String columnPath = "values@org#cyoda#entity#model#ValueMaps.strings.[.city]";
+                            String updatedValue = "updatedCity";
+                            JsonNode jsonNode = om.valueToTree(updatedValue);
+                            entityService.updateValue(randomReportId, columnPath, jsonNode);
+                            break;
+                        case "POST_PAYMENT":
 //                        should be launched by an EP - payment transition "ACCEPT_BY_BANK"
-                        break;
-                    default:
-                        entityService.launchTransition(randomReportId, randomTransition);
-                        break;
+                            break;
+                        default:
+                            entityService.launchTransition(randomReportId, randomTransition);
+                            break;
+                    }
                 }
+// added delay to let externalized processor run and finish before next transition cycle
+                TimeUnit.MILLISECONDS.sleep(100);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                System.err.println("Thread was interrupted: " + e.getMessage());
             }
         }
+    }
+
+    @Test
+    public void searchResultTest() throws Exception {
+        var employees = entityGenerator.generateEmployees(1);
+        entityService.saveEntities(employees);
+        var reports = entityGenerator.generateNestedReports(10);
+        entityService.saveEntities(reports);
+
+        var conditionRequest = new SearchConditionRequest();
+        conditionRequest.setType("group");
+        conditionRequest.setOperator("AND");
+        conditionRequest.setConditions(List.of(
+                new Condition("simple", "$.city", "NOT_EQUAL", "updatedCity")
+        ));
+        var searchId = entityService.runSearchAndGetSnapshotId("expense_report_nested", "1", conditionRequest);
+        System.out.println("SEARCH ID: " + searchId);
+
+        String json = entityService.getSearchResultAsJson(searchId);
+        var entities = jsonToEntityParser.parseResponse(json, ExpenseReportNested.class);
+        assertThat(entities.isEmpty()).isFalse();
     }
 }

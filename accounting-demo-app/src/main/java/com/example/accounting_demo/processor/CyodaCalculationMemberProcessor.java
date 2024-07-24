@@ -47,19 +47,19 @@ public class CyodaCalculationMemberProcessor {
         response.setPayload(payload);
 
         switch (request.getProcessorName()) {
-            case "notifyApprover":
-                notifyApprover(request);
+            case "sendNotification":
+                sendNotification(request);
                 break;
             case "createPayment":
                 createPayment(request);
                 break;
-            case "sendToBank":
+            case "isEnoughFunds":
                 sendToBank(request);
                 break;
             case "postPayment":
                 postPayment(request);
                 break;
-            case "createRootEntity":
+            case "saveRootId":
                 saveRootId(request);
                 break;
 
@@ -98,9 +98,24 @@ public class CyodaCalculationMemberProcessor {
     }
 
     //imitates email notification
-    public void notifyApprover(EntityProcessorCalculationRequest request) {
-        logger.info("Report with id: " + request.getEntityId() + " SUBMITTED");
-
+    public void sendNotification(EntityProcessorCalculationRequest request) throws IOException {
+        var id = UUID.fromString(request.getEntityId());
+        var state = entityService.getCurrentState(id);
+        var message = "";
+        switch (state) {
+            case "SUBMITTED":
+                message = " is pending accounting approval";
+                break;
+            case "APPROVED_BY_ACCOUNTING":
+                message = " is pending manager's approval";
+                break;
+            case "APPROVED_BY_MANAGER":
+                message = " is pending payment";
+                break;
+            default:
+                break;
+        }
+        logger.info("E-MAIL RECEIVED: ER with id: {}{}", request.getEntityId(), message);
     }
 
     //creates and saves new payment entity
@@ -110,7 +125,7 @@ public class CyodaCalculationMemberProcessor {
 
         ExpenseReport report = mapper.readValue(dataJson, ExpenseReport.class);
         String totalAmount = report.getTotalAmount();
-        
+
         Payment payment = new Payment();
         payment.setExpenseReportId(UUID.fromString(request.getEntityId()));
         payment.setAmount(totalAmount);
