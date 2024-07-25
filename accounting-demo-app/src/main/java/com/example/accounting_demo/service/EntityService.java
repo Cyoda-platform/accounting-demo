@@ -1,8 +1,10 @@
 package com.example.accounting_demo.service;
 
-import com.example.accounting_demo.auxiliary.SearchConditionRequest;
+import com.example.accounting_demo.auxiliary.*;
+import com.example.accounting_demo.model.*;
 import com.example.accounting_demo.processor.CyodaCalculationMemberClient;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.HttpEntity;
@@ -23,9 +25,7 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 @Component
@@ -38,14 +38,13 @@ public class EntityService {
     @Value("${cyoda.host}")
     private String host;
 
-    final EntityIdLists entityIdLists;
-
     private final String MODEL_VERSION = "1";
 
     private final String ENTITY_CLASS_NAME = "com.cyoda.tdb.model.treenode.TreeNodeEntity";
 
     private final ObjectMapper om;
     private final CloseableHttpClient httpClient = HttpClients.createDefault();
+    private final JsonToEntityParser jsonToEntityParser;
 
     private final RequestConfig requestConfig = RequestConfig.custom()
             .setConnectTimeout(5000)
@@ -53,13 +52,13 @@ public class EntityService {
             .setConnectionRequestTimeout(5000)
             .build();
 
-    public EntityService(ObjectMapper om, EntityIdLists entityIdLists) {
+    public EntityService(ObjectMapper om, JsonToEntityParser jsonToEntityParser) {
         this.om = om;
-        this.entityIdLists = entityIdLists;
+        this.jsonToEntityParser = jsonToEntityParser;
     }
 
-    public <T> HttpResponse saveEntitySchema(List<T> entities) throws IOException {
-        String model = getModelForClass(entities);
+    public <T extends BaseEntity> HttpResponse saveEntitySchema(List<T> entities) throws IOException {
+        String model = ModelRegistry.getModelByClass(entities.get(0).getClass());
 
         String url = String.format("%s/api/treeNode/model/import/JSON/SAMPLE_DATA/%s/%s", host, model, MODEL_VERSION);
         HttpPost httpPost = new HttpPost(url);
@@ -79,8 +78,8 @@ public class EntityService {
     }
 
     //    entities provided in order to define the model
-    public <T> HttpResponse lockEntitySchema(List<T> entities) throws IOException {
-        String model = getModelForClass(entities);
+    public <T extends BaseEntity> HttpResponse lockEntitySchema(List<T> entities) throws IOException {
+        String model = ModelRegistry.getModelByClass(entities.get(0).getClass());
 
         String url = String.format("%s/api/treeNode/model/%s/%s/lock", host, model, MODEL_VERSION);
         HttpPut httpPut = new HttpPut(url);
@@ -93,8 +92,8 @@ public class EntityService {
         }
     }
 
-    public <T> HttpResponse saveEntities(List<T> entities) throws IOException {
-        String model = getModelForClass(entities);
+    public <T extends BaseEntity> HttpResponse saveEntities(List<T> entities) throws IOException {
+        String model = ModelRegistry.getModelByClass(entities.get(0).getClass());
 
         String url = String.format("%s/api/entity/new/JSON/TREE/%s/%s", host, model, MODEL_VERSION);
         HttpPost httpPost = new HttpPost(url);
@@ -109,38 +108,7 @@ public class EntityService {
         logger.info("SAVE ENTITY REQUEST: " + om.writeValueAsString(httpPost.toString()));
 
         try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
-
-            HttpEntity responseEntity = response.getEntity();
-            String responseBody = EntityUtils.toString(responseEntity);
-            JsonNode jsonNode = om.readTree(responseBody);
-            logger.info("SAVE ENTITY RESPONSE: " + jsonNode.toString());
-
-            List<UUID> entityIdList = new ArrayList<>();
-            for (JsonNode idNode : jsonNode) {
-                var idMap = idNode.get("entityIds");
-                idMap.forEach(node -> entityIdList.add(UUID.fromString(node.asText())));
-            }
-
-            switch (model) {
-                case "expense_report_nested", "expense_report":
-                    waitForIdCollection();
-                    break;
-                case "payment":
-                    entityIdLists.addToPaymentIdList(entityIdList);
-                    logger.info(model + "IdList updated with ids: " + entityIdList);
-                    break;
-                case "employee":
-                    entityIdLists.addToEmployeeIdList(entityIdList);
-                    logger.info(model + "IdList updated with ids: " + entityIdList);
-                    break;
-                default:
-                    logger.warn("No corresponding entity model found");
-                    break;
-            }
-
             return response;
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
         }
     }
 
@@ -171,8 +139,8 @@ public class EntityService {
         }
     }
 
-    public <T> HttpResponse deleteAllEntitiesByModel(List<T> entity) throws IOException {
-        String modelName = getModelForClass(entity);
+    public <T extends BaseEntity> HttpResponse deleteAllEntitiesByModel(List<T> entities) throws IOException {
+        String modelName = ModelRegistry.getModelByClass(entities.get(0).getClass());
         return deleteAllEntitiesByModel(modelName);
     }
 
@@ -200,36 +168,6 @@ public class EntityService {
         return om.writeValueAsString(entities);
     }
 
-    public <T> String getModelForClass(List<T> entities) {
-        if (entities.isEmpty()) {
-            return null;
-        }
-
-        Class<?> firstClass = entities.get(0).getClass();
-        return switch (firstClass.getSimpleName()) {
-            case "ExpenseReport" -> "expense_report";
-            case "ExpenseReportNested" -> "expense_report_nested";
-            case "Payment" -> "payment";
-            case "Employee" -> "employee";
-            default -> "unknown_model";
-        };
-    }
-
-    public void waitForIdCollection() throws InterruptedException {
-        int maxWaitTimeInMillis = 2000;
-        int waitIntervalInMillis = 400;
-
-        int waitedTime = 0;
-        while (entityIdLists.getExpenseReportIdList().isEmpty() && waitedTime < maxWaitTimeInMillis * 3) {
-            TimeUnit.MILLISECONDS.sleep(waitIntervalInMillis);
-            waitedTime += waitIntervalInMillis;
-        }
-
-        if (entityIdLists.getExpenseReportIdList().isEmpty()) {
-            throw new IllegalStateException("Timeout: entityIdList is still empty after waiting.");
-        }
-    }
-
     public String runSearchAndGetSnapshotId(String model, String version, SearchConditionRequest searchConditionRequest) throws IOException {
         String url = String.format("%s/api/treeNode/search/snapshot/%s/%s", host, model, version);
         HttpPost httpPost = new HttpPost(url);
@@ -251,8 +189,35 @@ public class EntityService {
         }
     }
 
+    public Map<String, Object> getSnapshotStatus(String snapshotId) throws IOException {
+        String url = String.format("%s/api/treeNode/search/snapshot/%s/status", host, snapshotId);
+        HttpGet httpGet = new HttpGet(url);
+        httpGet.setConfig(requestConfig);
+        httpGet.setHeader("Authorization", "Bearer " + token);
+
+        logger.info(om.writeValueAsString(httpGet.toString()));
+
+        try (CloseableHttpResponse response = httpClient.execute(httpGet)) {
+            HttpEntity entity = response.getEntity();
+            String responseString = EntityUtils.toString(entity);
+
+            Map<String, Object> responseMap = om.readValue(responseString, new TypeReference<>() {
+            });
+            return responseMap;
+        }
+    }
+
     public String getSearchResultAsJson(String snapshotId) throws IOException {
-        String url = String.format("%s/api/treeNode/search/snapshot/%s", host, snapshotId);
+        String url = String.format("%s/api/treeNode/search/snapshot/%s?pageSize=1000", host, snapshotId);
+        return getRequest(url);
+    }
+
+    public String getAllEntitiesAsJsonWithoutIds(String model, String version) throws IOException {
+        String url = String.format("%s/api/entity/TREE/%s/%s", host, model, version);
+        return getRequest(url);
+    }
+
+    public String getRequest(String url) throws IOException {
         HttpGet httpGet = new HttpGet(url);
         httpGet.setConfig(requestConfig);
         httpGet.setHeader("Authorization", "Bearer " + token);
@@ -263,6 +228,40 @@ public class EntityService {
             HttpEntity entity = response.getEntity();
             return EntityUtils.toString(entity);
         }
+    }
+
+//    temporarily used to fetch all entities with IDs by model, can be replaced by getAllEntitiesAsJsonWithoutIds if it provides IDs
+    public <T extends BaseEntity> List<T> getAllEntitiesByModel(String model, String version) throws IOException, InterruptedException {
+        var clazz = ModelRegistry.getClassByModel(model);
+        var setFieldNames = FieldNameExtractor.getFieldNames(clazz);
+        var iterator = setFieldNames.iterator();
+        String firstFieldName = "";
+        if (iterator.hasNext()) {
+            firstFieldName = iterator.next();
+        }
+
+        var conditionRequest = new SearchConditionRequest();
+        conditionRequest.setType("group");
+        conditionRequest.setOperator("AND");
+        conditionRequest.setConditions(List.of(
+                new Condition("simple", "$." + firstFieldName, "NOT_EQUAL", "Impossible value")
+        ));
+
+        var snapshotId = runSearchAndGetSnapshotId(model, version, conditionRequest);
+
+        int maxWaitTimeInMillis = 10000;
+        int waitIntervalInMillis = 400;
+        int waitedTime = 0;
+        while ((!getSnapshotStatus(snapshotId).get("snapshotStatus").equals("SUCCESSFUL")) && waitedTime < maxWaitTimeInMillis) {
+            TimeUnit.MILLISECONDS.sleep(waitIntervalInMillis);
+            waitedTime += waitIntervalInMillis;
+        }
+        if (!getSnapshotStatus(snapshotId).get("snapshotStatus").equals("SUCCESSFUL")) {
+            throw new IllegalStateException("Timeout: report is not ready");
+        }
+
+        var response = getSearchResultAsJson(snapshotId);
+        return (List<T>) jsonToEntityParser.parseResponse(response, clazz);
     }
 
     public HttpResponse launchTransition(UUID id, String transition) throws IOException {
@@ -315,7 +314,8 @@ public class EntityService {
 
     public String getValue(UUID id, String columnPath) throws IOException {
 
-        String encodedColumnPath = URLEncoder.encode(columnPath, StandardCharsets.UTF_8);
+        String fullColumnPath = "values@org#cyoda#entity#model#ValueMaps." + columnPath;
+        String encodedColumnPath = URLEncoder.encode(fullColumnPath, StandardCharsets.UTF_8);
         String entityId = id.toString();
         String url = String.format("%s/api/platform-api/entity-info/fetch/lazy?entityClass=%s&entityId=%s&columnPath=%s", host, ENTITY_CLASS_NAME, entityId, encodedColumnPath);
         return getUrlString(url);
@@ -346,7 +346,8 @@ public class EntityService {
         httpPut.setHeader("Authorization", "Bearer " + token);
         httpPut.setHeader("Content-Type", "application/json");
 
-        StringEntity entity = getStringEntity(columnPath, newValue, entityId);
+        String fullColumnPath = "values@org#cyoda#entity#model#ValueMaps." + columnPath;
+        StringEntity entity = getStringEntity(fullColumnPath, newValue, entityId);
         httpPut.setEntity(entity);
 
         logger.info(om.writeValueAsString(httpPut.toString()));

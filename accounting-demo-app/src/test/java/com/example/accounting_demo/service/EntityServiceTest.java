@@ -28,9 +28,6 @@ public class EntityServiceTest {
     private EntityService entityService;
 
     @Autowired
-    private EntityIdLists entityIdLists;
-
-    @Autowired
     private Randomizer random;
 
     @Autowired
@@ -39,7 +36,7 @@ public class EntityServiceTest {
     private ObjectMapper om = new ObjectMapper();
 
     @BeforeEach
-    void addEntityModels() throws IOException {
+    void addEntityModels() throws IOException, InterruptedException {
         entityService.deleteAllEntitiesByModel("expense_report");
         entityService.deleteAllEntitiesByModel("expense_report_nested");
         entityService.deleteAllEntitiesByModel("employee");
@@ -54,11 +51,11 @@ public class EntityServiceTest {
         entityService.saveEntitySchema(employee);
         entityService.lockEntitySchema(employee);
 
-        var report = entityGenerator.generateReports(1);
+        var report = entityGenerator.generateReports(1, true);
         entityService.saveEntitySchema(report);
         entityService.lockEntitySchema(report);
 
-        var report_nested = entityGenerator.generateNestedReports(1);
+        var report_nested = entityGenerator.generateNestedReports(1, true);
         entityService.saveEntitySchema(report_nested);
         entityService.lockEntitySchema(report_nested);
 
@@ -67,18 +64,18 @@ public class EntityServiceTest {
         entityService.lockEntitySchema(payment);
     }
 
-    @AfterEach
-    void deleteEntitiesAndModels() throws Exception {
-        entityService.deleteAllEntitiesByModel("expense_report");
-        entityService.deleteAllEntitiesByModel("expense_report_nested");
-        entityService.deleteAllEntitiesByModel("employee");
-        entityService.deleteAllEntitiesByModel("payment");
-
-        entityService.deleteEntityModel("expense_report");
-        entityService.deleteEntityModel("expense_report_nested");
-        entityService.deleteEntityModel("employee");
-        entityService.deleteEntityModel("payment");
-    }
+//    @AfterEach
+//    void deleteEntitiesAndModels() throws Exception {
+//        entityService.deleteAllEntitiesByModel("expense_report");
+//        entityService.deleteAllEntitiesByModel("expense_report_nested");
+//        entityService.deleteAllEntitiesByModel("employee");
+//        entityService.deleteAllEntitiesByModel("payment");
+//
+//        entityService.deleteEntityModel("expense_report");
+//        entityService.deleteEntityModel("expense_report_nested");
+//        entityService.deleteEntityModel("employee");
+//        entityService.deleteEntityModel("payment");
+//    }
 
     @Test
     public void saveEmployeeListTest() throws Exception {
@@ -119,7 +116,10 @@ public class EntityServiceTest {
         int statusCode1 = response1.getStatusLine().getStatusCode();
         assertThat(statusCode1).isEqualTo(HttpStatus.SC_OK);
 
-        var savedReportId = entityIdLists.getExpenseReportIdList().get(0);
+        var reportFromDb = entityService.getAllEntitiesByModel("expense_report", "1");
+        assertThat(reportFromDb).hasSize(1);
+        var savedReportId = reportFromDb.get(0).getId();
+
         var statusBeforeTransition = entityService.getCurrentState(savedReportId);
 
         HttpResponse response2 = entityService.launchTransition(savedReportId, "SUBMIT");
@@ -136,8 +136,10 @@ public class EntityServiceTest {
         HttpResponse response = entityService.saveEntities(report);
         assertThat(response.getStatusLine().getStatusCode()).isEqualTo(HttpStatus.SC_OK);
 
-        var savedReportId = entityIdLists.getExpenseReportIdList().get(0);
-        String columnPath = "values@org#cyoda#entity#model#ValueMaps.strings.[.city]";
+        var reportFromDb = entityService.getAllEntitiesByModel("expense_report", "1");
+        assertThat(reportFromDb).hasSize(1);
+        var savedReportId = reportFromDb.get(0).getId();
+        String columnPath = "strings.[.city]";
 
         var value = entityService.getValue(savedReportId, columnPath);
 
@@ -150,9 +152,11 @@ public class EntityServiceTest {
         HttpResponse response1 = entityService.saveEntities(report);
         assertThat(response1.getStatusLine().getStatusCode()).isEqualTo(HttpStatus.SC_OK);
 
-        String columnPath = "values@org#cyoda#entity#model#ValueMaps.strings.[.city]";
+        String columnPath = "strings.[.city]";
 
-        var savedReportId = entityIdLists.getExpenseReportIdList().get(0);
+        var reportFromDb = entityService.getAllEntitiesByModel("expense_report", "1");
+        assertThat(reportFromDb).hasSize(1);
+        var savedReportId = reportFromDb.get(0).getId();
         String updatedValue = "updatedCity";
 
         JsonNode jsonNode = om.valueToTree(updatedValue);
@@ -187,10 +191,58 @@ public class EntityServiceTest {
         var reports = entityGenerator.generateNestedReports(nReports);
         entityService.saveEntities(reports);
 
-        var id = entityIdLists.getRandomExpenseReportId().toString();
+        var reportFromDb = entityService.getAllEntitiesByModel("expense_report_nested", "1");
+        assertThat(reportFromDb).hasSize(1);
+        var savedReportId = reportFromDb.get(0).getId();
 
-        HttpResponse response1 = entityService.deleteEntityByRootId("expense_report_nested", "1", id);
+        HttpResponse response1 = entityService.deleteEntityByRootId("expense_report_nested", "1", savedReportId.toString());
         assertThat(response1.getStatusLine().getStatusCode()).isEqualTo(HttpStatus.SC_OK);
+    }
+
+    @Test
+    public void searchResultTest() throws Exception {
+        var employees = entityGenerator.generateEmployees(1);
+        entityService.saveEntities(employees);
+
+        var nReports = 5;
+        var reports = entityGenerator.generateNestedReports(nReports);
+        var report1 = reports.get(0);
+        report1.setCity("FirstCity");
+        var report2 = reports.get(1);
+        report2.setCity("SecondCity");
+
+        entityService.saveEntities(reports);
+
+        var conditionRequest = new SearchConditionRequest();
+        conditionRequest.setType("group");
+        conditionRequest.setOperator("OR");
+        conditionRequest.setConditions(List.of(
+                new Condition("simple", "$.city", "EQUALS", "FirstCity"),
+                new Condition("simple", "$.city", "EQUALS", "SecondCity")
+        ));
+        var searchId = entityService.runSearchAndGetSnapshotId("expense_report_nested", "1", conditionRequest);
+
+        var status = entityService.getSnapshotStatus(searchId);
+        assertThat(status.get("snapshotStatus")).isEqualTo("SUCCESSFUL");
+
+        String json = entityService.getSearchResultAsJson(searchId);
+        var entities = jsonToEntityParser.parseResponse(json, ExpenseReportNested.class);
+        assertThat(entities.size()).isEqualTo(2);
+    }
+
+    @Test
+    public void getAllEntitiesByModel() throws Exception {
+        var nEmployees = 3;
+        var employees = entityGenerator.generateEmployees(nEmployees);
+        entityService.saveEntities(employees);
+        var employeesFromDb = entityService.getAllEntitiesByModel("employee", "1");
+        assertThat(employeesFromDb.size()).isEqualTo(nEmployees);
+
+        var nReports = 5;
+        var reports = entityGenerator.generateNestedReports(nReports);
+        entityService.saveEntities(reports);
+        var reportsFromDb = entityService.getAllEntitiesByModel("expense_report_nested", "1");
+        assertThat(reportsFromDb.size()).isEqualTo(nReports);
     }
 
     @Test
@@ -205,56 +257,15 @@ public class EntityServiceTest {
         var reports = entityGenerator.generateReports(nReports);
         entityService.saveEntities(reports);
 
-        //select a random ExpenseReport and run a random available transition, then take another one and repeat
-
-        for (int i = 0; i < nTransitions; i++) {
-            System.out.println("\nTRANSITION NUMBER: " + i);
-
-            var randomReportId = entityIdLists.getRandomExpenseReportId();
-            var availableTransitions = entityService.getListTransitions(randomReportId);
-            System.out.println("Available transitions: " + availableTransitions.toString());
-
-            if (!availableTransitions.isEmpty()) {
-                var randomTransition = random.getRandomElement(availableTransitions);
-                System.out.println("Transition chosen to run: " + randomTransition);
-
-                switch (randomTransition) {
-                    case "UPDATE":
-//            TODO add generating random fields AND update updateValue method to take a list of changes
-                        String columnPath = "values@org#cyoda#entity#model#ValueMaps.strings.[.city]";
-                        String updatedValue = "updatedCity";
-                        JsonNode jsonNode = om.valueToTree(updatedValue);
-                        entityService.updateValue(randomReportId, columnPath, jsonNode);
-                        break;
-                    case "POST_PAYMENT":
-//                        should be launched by an externalized processor - payment transition "ACCEPT_BY_BANK"
-                        break;
-                    default:
-                        entityService.launchTransition(randomReportId, randomTransition);
-                        break;
-                }
-            }
-        }
-    }
-
-    @Test
-    public void nestedEntitiesWorkflowTest() throws Exception {
-        var nEmployees = 5;
-        var nReports = 15;
-        var nTransitions = 50;
-
-        var employees = entityGenerator.generateEmployees(nEmployees);
-        entityService.saveEntities(employees);
-        //        ExpenseReport is created by an employee
-        var reports = entityGenerator.generateNestedReports(nReports);
-        entityService.saveEntities(reports);
+        var reportsFromDb = entityService.getAllEntitiesByModel("expense_report", "1");
+        assertThat(reportsFromDb).hasSize(nReports);
 
         //select a random ExpenseReport and run a random available transition, then take another one and repeat
 
         for (int i = 0; i < nTransitions; i++) {
             System.out.println("\nTRANSITION NUMBER: " + i);
 
-            var randomReportId = entityIdLists.getRandomExpenseReportId();
+            var randomReportId = random.getRandomElement(reportsFromDb).getId();
             var availableTransitions = entityService.getListTransitions(randomReportId);
             System.out.println("Available transitions: " + availableTransitions.toString());
 
@@ -266,7 +277,61 @@ public class EntityServiceTest {
                     switch (randomTransition) {
                         case "UPDATE":
 //            TODO add generating random fields AND update updateValue method to take a list of changes
-                            String columnPath = "values@org#cyoda#entity#model#ValueMaps.strings.[.city]";
+                            String columnPath = "strings.[.city]";
+                            String updatedValue = "updatedCity";
+                            JsonNode jsonNode = om.valueToTree(updatedValue);
+                            entityService.updateValue(randomReportId, columnPath, jsonNode);
+                            break;
+                        case "POST_PAYMENT":
+//                        should be launched by an externalized processor - payment transition "ACCEPT_BY_BANK"
+                            break;
+                        default:
+                            entityService.launchTransition(randomReportId, randomTransition);
+                            break;
+                    }
+                }
+                // added delay to let externalized processor run and finish before next transition cycle
+                TimeUnit.MILLISECONDS.sleep(100);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                System.err.println("Thread was interrupted: " + e.getMessage());
+            }
+        }
+    }
+
+    @Test
+    public void nestedEntitiesWorkflowTest() throws Exception {
+        var nEmployees = 5;
+        var nReports = 20;
+        var nTransitions = 30;
+
+        var employees = entityGenerator.generateEmployees(nEmployees);
+        entityService.saveEntities(employees);
+        //        ExpenseReport is created by an employee
+        var reports = entityGenerator.generateNestedReports(nReports);
+        entityService.saveEntities(reports);
+
+        var reportsFromDb = entityService.getAllEntitiesByModel("expense_report_nested", "1");
+        assertThat(reportsFromDb).hasSize(nReports);
+
+        //select a random ExpenseReport and run a random available transition, then take another one and repeat
+
+        for (int i = 0; i < nTransitions; i++) {
+            System.out.println("\nTRANSITION NUMBER: " + i);
+
+            var randomReportId = random.getRandomElement(reportsFromDb).getId();
+            var availableTransitions = entityService.getListTransitions(randomReportId);
+            System.out.println("Available transitions: " + availableTransitions.toString());
+
+            try {
+                if (!availableTransitions.isEmpty()) {
+                    var randomTransition = random.getRandomElement(availableTransitions);
+                    System.out.println("Transition chosen to run: " + randomTransition);
+
+                    switch (randomTransition) {
+                        case "UPDATE":
+//            TODO add generating random fields AND update updateValue method to take a list of changes
+                            String columnPath = "strings.[.city]";
                             String updatedValue = "updatedCity";
                             JsonNode jsonNode = om.valueToTree(updatedValue);
                             entityService.updateValue(randomReportId, columnPath, jsonNode);
@@ -286,26 +351,5 @@ public class EntityServiceTest {
                 System.err.println("Thread was interrupted: " + e.getMessage());
             }
         }
-    }
-
-    @Test
-    public void searchResultTest() throws Exception {
-        var employees = entityGenerator.generateEmployees(1);
-        entityService.saveEntities(employees);
-        var reports = entityGenerator.generateNestedReports(10);
-        entityService.saveEntities(reports);
-
-        var conditionRequest = new SearchConditionRequest();
-        conditionRequest.setType("group");
-        conditionRequest.setOperator("AND");
-        conditionRequest.setConditions(List.of(
-                new Condition("simple", "$.city", "NOT_EQUAL", "updatedCity")
-        ));
-        var searchId = entityService.runSearchAndGetSnapshotId("expense_report_nested", "1", conditionRequest);
-        System.out.println("SEARCH ID: " + searchId);
-
-        String json = entityService.getSearchResultAsJson(searchId);
-        var entities = jsonToEntityParser.parseResponse(json, ExpenseReportNested.class);
-        assertThat(entities.isEmpty()).isFalse();
     }
 }

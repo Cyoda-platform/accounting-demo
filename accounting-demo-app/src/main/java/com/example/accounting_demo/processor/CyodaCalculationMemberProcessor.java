@@ -2,7 +2,6 @@ package com.example.accounting_demo.processor;
 
 import com.example.accounting_demo.model.ExpenseReport;
 import com.example.accounting_demo.model.Payment;
-import com.example.accounting_demo.service.EntityIdLists;
 import com.example.accounting_demo.service.EntityService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.cyoda.cloud.api.event.BaseEvent;
@@ -24,12 +23,10 @@ public class CyodaCalculationMemberProcessor {
 
     private final ObjectMapper mapper;
     private final EntityService entityService;
-    final EntityIdLists entityIdLists;
 
-    public CyodaCalculationMemberProcessor(ObjectMapper mapper, EntityService entityService, EntityIdLists entityIdLists) {
+    public CyodaCalculationMemberProcessor(ObjectMapper mapper, EntityService entityService) {
         this.mapper = mapper;
         this.entityService = entityService;
-        this.entityIdLists = entityIdLists;
     }
 
 
@@ -59,9 +56,6 @@ public class CyodaCalculationMemberProcessor {
             case "postPayment":
                 postPayment(request);
                 break;
-            case "saveRootId":
-                saveRootId(request);
-                break;
 
             default:
                 logger.info("No corresponding processor found");
@@ -71,14 +65,8 @@ public class CyodaCalculationMemberProcessor {
         return response;
     }
 
-    private void saveRootId(EntityProcessorCalculationRequest request) {
-        var id = UUID.fromString(request.getEntityId());
-        entityIdLists.addToExpenseReportIdList(List.of(id));
-        logger.info("IdList updated with id: {}", id);
-    }
-
     private void postPayment(EntityProcessorCalculationRequest request) throws IOException {
-        var expenseReportId = entityService.getValue(UUID.fromString(request.getEntityId()), "values@org#cyoda#entity#model#ValueMaps.timeuuids.[.expenseReportId]");
+        var expenseReportId = entityService.getValue(UUID.fromString(request.getEntityId()), "timeuuids.[.expenseReportId]");
         entityService.launchTransition(UUID.fromString(expenseReportId), "POST_PAYMENT");
     }
 
@@ -132,5 +120,4 @@ public class CyodaCalculationMemberProcessor {
 
         entityService.saveEntities(List.of(payment));
     }
-
 }
