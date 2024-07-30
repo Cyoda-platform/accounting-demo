@@ -1,8 +1,7 @@
 package com.example.accounting_demo.service;
 
 import com.example.accounting_demo.auxiliary.*;
-import com.example.accounting_demo.model.*;
-import com.example.accounting_demo.processor.CyodaCalculationMemberClient;
+import com.example.accounting_demo.model.BaseEntity;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -25,12 +24,15 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 @Component
 public class EntityService {
-    private static final Logger logger = LoggerFactory.getLogger(CyodaCalculationMemberClient.class);
+    private static final Logger logger = LoggerFactory.getLogger(EntityService.class);
 
     @Value("${cyoda.token}")
     private String token;
@@ -57,7 +59,7 @@ public class EntityService {
         this.jsonToEntityParser = jsonToEntityParser;
     }
 
-    public <T extends BaseEntity> HttpResponse saveEntitySchema(List<T> entities) throws IOException {
+    public <T extends BaseEntity> HttpResponse saveEntityModel(List<T> entities) throws IOException {
         String model = ModelRegistry.getModelByClass(entities.get(0).getClass());
 
         String url = String.format("%s/api/treeNode/model/import/JSON/SAMPLE_DATA/%s/%s", host, model, MODEL_VERSION);
@@ -78,7 +80,7 @@ public class EntityService {
     }
 
     //    entities provided in order to define the model
-    public <T extends BaseEntity> HttpResponse lockEntitySchema(List<T> entities) throws IOException {
+    public <T extends BaseEntity> HttpResponse lockEntityModel(List<T> entities) throws IOException {
         String model = ModelRegistry.getModelByClass(entities.get(0).getClass());
 
         String url = String.format("%s/api/treeNode/model/%s/%s/lock", host, model, MODEL_VERSION);
@@ -90,6 +92,22 @@ public class EntityService {
         try (CloseableHttpResponse response = httpClient.execute(httpPut)) {
             return response;
         }
+    }
+
+    public HttpResponse deleteEntityModel(String modelName, String modelVersion) throws IOException {
+        String url = String.format(host + "/api/treeNode/model/%s/%s", modelName, modelVersion);
+        HttpDelete httpDelete = new HttpDelete(url);
+        httpDelete.setHeader("Authorization", "Bearer " + token);
+
+        logger.info(om.writeValueAsString(httpDelete.toString()));
+
+        try (CloseableHttpResponse response = httpClient.execute(httpDelete)) {
+            return response;
+        }
+    }
+
+    public HttpResponse deleteEntityModel(String modelName) throws IOException {
+        return deleteEntityModel(modelName, MODEL_VERSION);
     }
 
     public <T extends BaseEntity> HttpResponse saveEntities(List<T> entities) throws IOException {
@@ -108,21 +126,7 @@ public class EntityService {
         logger.info("SAVE ENTITY REQUEST: " + om.writeValueAsString(httpPost.toString()));
 
         try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
-            return response;
-        }
-    }
-
-    public HttpResponse deleteEntityByRootId(String modelName, String modelVersion, String rootId) throws IOException {
-        String url = String.format(host + "/api/entity/TREE/%s/%s/%s", modelName, modelVersion, rootId);
-        HttpDelete httpDelete = new HttpDelete(url);
-        httpDelete.setConfig(requestConfig);
-        httpDelete.setHeader("Authorization", "Bearer " + token);
-
-        logger.info(om.writeValueAsString(httpDelete.toString()));
-
-        try (CloseableHttpResponse response = httpClient.execute(httpDelete)) {
-            String responseBody = EntityUtils.toString(response.getEntity());
-            logger.info(om.writeValueAsString(responseBody));
+            logger.info("SAVE ENTITY RESPONSE: " + om.writeValueAsString(response));
             return response;
         }
     }
@@ -148,20 +152,19 @@ public class EntityService {
         return deleteAllEntitiesByModel(modelName, MODEL_VERSION);
     }
 
-    public HttpResponse deleteEntityModel(String modelName, String modelVersion) throws IOException {
-        String url = String.format(host + "/api/treeNode/model/%s/%s", modelName, modelVersion);
+    public HttpResponse deleteEntityByRootId(String modelName, String modelVersion, String rootId) throws IOException {
+        String url = String.format(host + "/api/entity/TREE/%s/%s/%s", modelName, modelVersion, rootId);
         HttpDelete httpDelete = new HttpDelete(url);
+        httpDelete.setConfig(requestConfig);
         httpDelete.setHeader("Authorization", "Bearer " + token);
 
         logger.info(om.writeValueAsString(httpDelete.toString()));
 
         try (CloseableHttpResponse response = httpClient.execute(httpDelete)) {
+            String responseBody = EntityUtils.toString(response.getEntity());
+            logger.info(om.writeValueAsString(responseBody));
             return response;
         }
-    }
-
-    public HttpResponse deleteEntityModel(String modelName) throws IOException {
-        return deleteEntityModel(modelName, MODEL_VERSION);
     }
 
     public <T> String convertListToJson(List<T> entities) throws JsonProcessingException {
@@ -212,9 +215,17 @@ public class EntityService {
         return getRequest(url);
     }
 
-    public String getAllEntitiesAsJsonWithoutIds(String model, String version) throws IOException {
+    public String getAllEntitiesAsJson(String model, String version) throws IOException {
         String url = String.format("%s/api/entity/TREE/%s/%s", host, model, version);
         return getRequest(url);
+    }
+
+    public <T extends BaseEntity> List<T> getAllEntitiesAsObjects(String model, String version) throws IOException {
+        String json = getAllEntitiesAsJson(model, version);
+
+        Class clazz = ModelRegistry.getClassByModel(model);
+
+        return jsonToEntityParser.parseResponse(json, clazz);
     }
 
     public String getRequest(String url) throws IOException {
@@ -230,22 +241,8 @@ public class EntityService {
         }
     }
 
-//    temporarily used to fetch all entities with IDs by model, can be replaced by getAllEntitiesAsJsonWithoutIds if it provides IDs
-    public <T extends BaseEntity> List<T> getAllEntitiesByModel(String model, String version) throws IOException, InterruptedException {
+    public <T extends BaseEntity> List<T> getSearchResultAsEntities(String model, String version, SearchConditionRequest conditionRequest) throws IOException, InterruptedException {
         var clazz = ModelRegistry.getClassByModel(model);
-        var setFieldNames = FieldNameExtractor.getFieldNames(clazz);
-        var iterator = setFieldNames.iterator();
-        String firstFieldName = "";
-        if (iterator.hasNext()) {
-            firstFieldName = iterator.next();
-        }
-
-        var conditionRequest = new SearchConditionRequest();
-        conditionRequest.setType("group");
-        conditionRequest.setOperator("AND");
-        conditionRequest.setConditions(List.of(
-                new Condition("simple", "$." + firstFieldName, "NOT_EQUAL", "Impossible value")
-        ));
 
         var snapshotId = runSearchAndGetSnapshotId(model, version, conditionRequest);
 

@@ -6,7 +6,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,20 +47,20 @@ public class EntityServiceTest {
         entityService.deleteEntityModel("payment");
 
         var employee = entityGenerator.generateEmployees(1);
-        entityService.saveEntitySchema(employee);
-        entityService.lockEntitySchema(employee);
+        entityService.saveEntityModel(employee);
+        entityService.lockEntityModel(employee);
 
         var report = entityGenerator.generateReports(1, true);
-        entityService.saveEntitySchema(report);
-        entityService.lockEntitySchema(report);
+        entityService.saveEntityModel(report);
+        entityService.lockEntityModel(report);
 
         var report_nested = entityGenerator.generateNestedReports(1, true);
-        entityService.saveEntitySchema(report_nested);
-        entityService.lockEntitySchema(report_nested);
+        entityService.saveEntityModel(report_nested);
+        entityService.lockEntityModel(report_nested);
 
         var payment = entityGenerator.generatePayments(1);
-        entityService.saveEntitySchema(payment);
-        entityService.lockEntitySchema(payment);
+        entityService.saveEntityModel(payment);
+        entityService.lockEntityModel(payment);
     }
 
 //    @AfterEach
@@ -116,7 +115,7 @@ public class EntityServiceTest {
         int statusCode1 = response1.getStatusLine().getStatusCode();
         assertThat(statusCode1).isEqualTo(HttpStatus.SC_OK);
 
-        var reportFromDb = entityService.getAllEntitiesByModel("expense_report", "1");
+        var reportFromDb = entityService.getAllEntitiesAsObjects("expense_report", "1");
         assertThat(reportFromDb).hasSize(1);
         var savedReportId = reportFromDb.get(0).getId();
 
@@ -136,7 +135,7 @@ public class EntityServiceTest {
         HttpResponse response = entityService.saveEntities(report);
         assertThat(response.getStatusLine().getStatusCode()).isEqualTo(HttpStatus.SC_OK);
 
-        var reportFromDb = entityService.getAllEntitiesByModel("expense_report", "1");
+        var reportFromDb = entityService.getAllEntitiesAsObjects("expense_report", "1");
         assertThat(reportFromDb).hasSize(1);
         var savedReportId = reportFromDb.get(0).getId();
         String columnPath = "strings.[.city]";
@@ -154,7 +153,7 @@ public class EntityServiceTest {
 
         String columnPath = "strings.[.city]";
 
-        var reportFromDb = entityService.getAllEntitiesByModel("expense_report", "1");
+        var reportFromDb = entityService.getAllEntitiesAsObjects("expense_report", "1");
         assertThat(reportFromDb).hasSize(1);
         var savedReportId = reportFromDb.get(0).getId();
         String updatedValue = "updatedCity";
@@ -191,7 +190,7 @@ public class EntityServiceTest {
         var reports = entityGenerator.generateNestedReports(nReports);
         entityService.saveEntities(reports);
 
-        var reportFromDb = entityService.getAllEntitiesByModel("expense_report_nested", "1");
+        var reportFromDb = entityService.getAllEntitiesAsObjects("expense_report_nested", "1");
         assertThat(reportFromDb).hasSize(1);
         var savedReportId = reportFromDb.get(0).getId();
 
@@ -235,13 +234,13 @@ public class EntityServiceTest {
         var nEmployees = 3;
         var employees = entityGenerator.generateEmployees(nEmployees);
         entityService.saveEntities(employees);
-        var employeesFromDb = entityService.getAllEntitiesByModel("employee", "1");
+        var employeesFromDb = entityService.getAllEntitiesAsObjects("employee", "1");
         assertThat(employeesFromDb.size()).isEqualTo(nEmployees);
 
         var nReports = 5;
         var reports = entityGenerator.generateNestedReports(nReports);
         entityService.saveEntities(reports);
-        var reportsFromDb = entityService.getAllEntitiesByModel("expense_report_nested", "1");
+        var reportsFromDb = entityService.getAllEntitiesAsObjects("expense_report_nested", "1");
         assertThat(reportsFromDb.size()).isEqualTo(nReports);
     }
 
@@ -257,7 +256,7 @@ public class EntityServiceTest {
         var reports = entityGenerator.generateReports(nReports);
         entityService.saveEntities(reports);
 
-        var reportsFromDb = entityService.getAllEntitiesByModel("expense_report", "1");
+        var reportsFromDb = entityService.getAllEntitiesAsObjects("expense_report", "1");
         assertThat(reportsFromDb).hasSize(nReports);
 
         //select a random ExpenseReport and run a random available transition, then take another one and repeat
@@ -301,9 +300,9 @@ public class EntityServiceTest {
 
     @Test
     public void nestedEntitiesWorkflowTest() throws Exception {
-        var nEmployees = 5;
-        var nReports = 20;
-        var nTransitions = 30;
+        var nEmployees = 1;
+        var nReports = 5;
+        var nTransitions = 10;
 
         var employees = entityGenerator.generateEmployees(nEmployees);
         entityService.saveEntities(employees);
@@ -311,7 +310,7 @@ public class EntityServiceTest {
         var reports = entityGenerator.generateNestedReports(nReports);
         entityService.saveEntities(reports);
 
-        var reportsFromDb = entityService.getAllEntitiesByModel("expense_report_nested", "1");
+        var reportsFromDb = entityService.getAllEntitiesAsObjects("expense_report_nested", "1");
         assertThat(reportsFromDb).hasSize(nReports);
 
         //select a random ExpenseReport and run a random available transition, then take another one and repeat

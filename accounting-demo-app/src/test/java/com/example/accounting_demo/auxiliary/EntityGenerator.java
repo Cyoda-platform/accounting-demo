@@ -35,7 +35,7 @@ public class EntityGenerator {
 
         List<UUID> idList = fakeEmployeeId
                 ? List.of(fakeUuid)
-                : entityService.getAllEntitiesByModel("employee", "1").stream()
+                : entityService.getAllEntitiesAsObjects("employee", "1").stream()
                 .map(BaseEntity::getId)
                 .toList();
 
@@ -63,7 +63,7 @@ public class EntityGenerator {
 
         List<UUID> idList = fakeEmployeeId
                 ? List.of(fakeUuid)
-                : entityService.getAllEntitiesByModel("employee", "1").stream()
+                : entityService.getAllEntitiesAsObjects("employee", "1").stream()
                 .map(BaseEntity::getId)
                 .toList();
 

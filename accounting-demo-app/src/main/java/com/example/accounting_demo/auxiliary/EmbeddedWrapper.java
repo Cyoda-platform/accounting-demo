@@ -16,13 +16,13 @@ public class EmbeddedWrapper {
     @Setter
     public static class ObjectNodesWrapper {
         @JsonProperty("objectNodes")
-        private List<EntityWrapper> objectNodes;
+        private List<TreeWrapper> objectNodes;
     }
 
     @Getter
     @Setter
-    public static class EntityWrapper {
+    public static class TreeWrapper {
         private String id;
-        private Object entity;
+        private Object tree;
     }
 }
