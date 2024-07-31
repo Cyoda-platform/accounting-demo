@@ -110,6 +110,7 @@ public class EntityService {
         return deleteEntityModel(modelName, MODEL_VERSION);
     }
 
+
     public <T extends BaseEntity> HttpResponse saveEntities(List<T> entities) throws IOException {
         String model = ModelRegistry.getModelByClass(entities.get(0).getClass());
 
@@ -126,7 +127,21 @@ public class EntityService {
         logger.info("SAVE ENTITY REQUEST: " + om.writeValueAsString(httpPost.toString()));
 
         try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
-            logger.info("SAVE ENTITY RESPONSE: " + om.writeValueAsString(response));
+            return response;
+        }
+    }
+
+    public HttpResponse deleteEntityByRootId(String modelName, String modelVersion, String rootId) throws IOException {
+        String url = String.format(host + "/api/entity/TREE/%s/%s/%s", modelName, modelVersion, rootId);
+        HttpDelete httpDelete = new HttpDelete(url);
+        httpDelete.setConfig(requestConfig);
+        httpDelete.setHeader("Authorization", "Bearer " + token);
+
+        logger.info(om.writeValueAsString(httpDelete.toString()));
+
+        try (CloseableHttpResponse response = httpClient.execute(httpDelete)) {
+            String responseBody = EntityUtils.toString(response.getEntity());
+            logger.info(om.writeValueAsString(responseBody));
             return response;
         }
     }
@@ -150,21 +165,6 @@ public class EntityService {
 
     public HttpResponse deleteAllEntitiesByModel(String modelName) throws IOException {
         return deleteAllEntitiesByModel(modelName, MODEL_VERSION);
-    }
-
-    public HttpResponse deleteEntityByRootId(String modelName, String modelVersion, String rootId) throws IOException {
-        String url = String.format(host + "/api/entity/TREE/%s/%s/%s", modelName, modelVersion, rootId);
-        HttpDelete httpDelete = new HttpDelete(url);
-        httpDelete.setConfig(requestConfig);
-        httpDelete.setHeader("Authorization", "Bearer " + token);
-
-        logger.info(om.writeValueAsString(httpDelete.toString()));
-
-        try (CloseableHttpResponse response = httpClient.execute(httpDelete)) {
-            String responseBody = EntityUtils.toString(response.getEntity());
-            logger.info(om.writeValueAsString(responseBody));
-            return response;
-        }
     }
 
     public <T> String convertListToJson(List<T> entities) throws JsonProcessingException {
@@ -211,12 +211,16 @@ public class EntityService {
     }
 
     public String getSearchResultAsJson(String snapshotId) throws IOException {
-        String url = String.format("%s/api/treeNode/search/snapshot/%s?pageSize=1000", host, snapshotId);
+        String url = String.format("%s/api/treeNode/search/snapshot/%s?pageSize=100", host, snapshotId);
         return getRequest(url);
     }
 
     public String getAllEntitiesAsJson(String model, String version) throws IOException {
-        String url = String.format("%s/api/entity/TREE/%s/%s", host, model, version);
+        return getAllEntitiesAsJson(model, version, 100);
+    }
+
+    public String getAllEntitiesAsJson(String model, String version, int pageSize) throws IOException {
+        String url = String.format("%s/api/entity/TREE/%s/%s?pageSize=%s", host, model, version, pageSize);
         return getRequest(url);
     }
 

@@ -16,37 +16,31 @@ import java.util.UUID;
 
 @Component
 public class JsonToEntityParser {
-
-    private static final Logger logger = LoggerFactory.getLogger(JsonToEntityParser.class);
-
     public <T extends BaseEntity> List<T> parseResponse(String jsonResponse, Class<T> clazz) throws IOException {
-        List<T> entities = new ArrayList<>();
-
         ObjectMapper mapper = new ObjectMapper();
         mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
         try {
-            List<EmbeddedWrapper.TreeWrapper> treeWrappers = mapper.readValue(jsonResponse, new TypeReference<List<EmbeddedWrapper.TreeWrapper>>() {
-            });
-            for (EmbeddedWrapper.TreeWrapper wrapper : treeWrappers) {
+            EmbeddedWrapper response = mapper.readValue(jsonResponse, EmbeddedWrapper.class);
+            List<EmbeddedWrapper.TreeWrapper> entityWrappers = response.getEmbedded().getObjectNodes();
+
+            List<T> entities = new ArrayList<>();
+            for (EmbeddedWrapper.TreeWrapper wrapper : entityWrappers) {
                 T entity = mapper.convertValue(wrapper.getTree(), clazz);
                 entity.setId(UUID.fromString(wrapper.getId()));
                 entities.add(entity);
             }
-        } catch (JsonProcessingException e) {
-            try {
-                EmbeddedWrapper response = mapper.readValue(jsonResponse, EmbeddedWrapper.class);
-                List<EmbeddedWrapper.TreeWrapper> treeWrappers = response.getEmbedded().getObjectNodes();
-                for (EmbeddedWrapper.TreeWrapper wrapper : treeWrappers) {
-                    T entity = mapper.convertValue(wrapper.getTree(), clazz);
-                    entity.setId(UUID.fromString(wrapper.getId()));
-                    entities.add(entity);
-                }
-            } catch (JsonProcessingException ex) {
-                logger.warn("failed parsing json to entity");
-            }
-        }
+            return entities;
+        } catch (Exception e) {
+            List<EmbeddedWrapper.TreeWrapper> entityWrappers = mapper.readValue(jsonResponse, new TypeReference<List<EmbeddedWrapper.TreeWrapper>>() {});
 
-        return entities;
+            List<T> entities = new ArrayList<>();
+            for (EmbeddedWrapper.TreeWrapper wrapper : entityWrappers) {
+                T entity = mapper.convertValue(wrapper.getTree(), clazz);
+                entity.setId(UUID.fromString(wrapper.getId()));
+                entities.add(entity);
+            }
+            return entities;
+        }
     }
 }

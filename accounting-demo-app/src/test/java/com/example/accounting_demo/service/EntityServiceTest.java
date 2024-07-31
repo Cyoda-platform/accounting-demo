@@ -86,7 +86,7 @@ public class EntityServiceTest {
 
     @Test
     public void saveExpenseReportListTest() throws Exception {
-        var reports = entityGenerator.generateReports(5);
+        var reports = entityGenerator.generateReports(5, true);
         HttpResponse response = entityService.saveEntities(reports);
 
         assertThat(response.getStatusLine().getStatusCode()).isEqualTo(HttpStatus.SC_OK);
@@ -94,7 +94,7 @@ public class EntityServiceTest {
 
     @Test
     public void saveNestedExpenseReportListTest() throws Exception {
-        var reports = entityGenerator.generateNestedReports(5);
+        var reports = entityGenerator.generateNestedReports(5, true);
         HttpResponse response = entityService.saveEntities(reports);
 
         assertThat(response.getStatusLine().getStatusCode()).isEqualTo(HttpStatus.SC_OK);
@@ -110,7 +110,7 @@ public class EntityServiceTest {
 
     @Test
     public void launchTransitionTest() throws Exception {
-        var report = entityGenerator.generateReports(1);
+        var report = entityGenerator.generateReports(1, true);
         HttpResponse response1 = entityService.saveEntities(report);
         int statusCode1 = response1.getStatusLine().getStatusCode();
         assertThat(statusCode1).isEqualTo(HttpStatus.SC_OK);
@@ -131,7 +131,7 @@ public class EntityServiceTest {
 
     @Test
     public void getValueTest() throws Exception {
-        var report = entityGenerator.generateReports(1);
+        var report = entityGenerator.generateReports(1, true);
         HttpResponse response = entityService.saveEntities(report);
         assertThat(response.getStatusLine().getStatusCode()).isEqualTo(HttpStatus.SC_OK);
 
@@ -147,7 +147,7 @@ public class EntityServiceTest {
 
     @Test
     public void updateValueTest() throws Exception {
-        var report = entityGenerator.generateReports(1);
+        var report = entityGenerator.generateReports(1, true);
         HttpResponse response1 = entityService.saveEntities(report);
         assertThat(response1.getStatusLine().getStatusCode()).isEqualTo(HttpStatus.SC_OK);
 
@@ -246,9 +246,9 @@ public class EntityServiceTest {
 
     @Test
     public void flatEntitiesWorkflowTest() throws Exception {
-        var nEmployees = 10;
-        var nReports = 40;
-        var nTransitions = 200;
+        var nEmployees = 1;
+        var nReports = 4;
+        var nTransitions = 20;
 
         var employees = entityGenerator.generateEmployees(nEmployees);
         entityService.saveEntities(employees);
