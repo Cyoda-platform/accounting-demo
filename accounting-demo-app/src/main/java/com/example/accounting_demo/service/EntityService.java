@@ -46,6 +46,7 @@ public class EntityService {
 
     private final ObjectMapper om;
     private final CloseableHttpClient httpClient = HttpClients.createDefault();
+    private final JsonToEntityListParser jsonToEntityListParser;
     private final JsonToEntityParser jsonToEntityParser;
 
     private final RequestConfig requestConfig = RequestConfig.custom()
@@ -54,8 +55,9 @@ public class EntityService {
             .setConnectionRequestTimeout(5000)
             .build();
 
-    public EntityService(ObjectMapper om, JsonToEntityParser jsonToEntityParser) {
+    public EntityService(ObjectMapper om, JsonToEntityListParser jsonToEntityListParser, JsonToEntityParser jsonToEntityParser) {
         this.om = om;
+        this.jsonToEntityListParser = jsonToEntityListParser;
         this.jsonToEntityParser = jsonToEntityParser;
     }
 
@@ -210,6 +212,33 @@ public class EntityService {
         }
     }
 
+    public <T extends BaseEntity> List<T> getSearchResultAsEntities(String model, String version, SearchConditionRequest conditionRequest) throws IOException, InterruptedException {
+        var clazz = ModelRegistry.getClassByModel(model);
+        var snapshotId = runSearchAndGetSnapshotId(model, version, conditionRequest);
+
+        if (isSearchSuccessful(snapshotId)) {
+            var response = getSearchResultAsJson(snapshotId);
+            return (List<T>) jsonToEntityListParser.parseResponse(response, clazz);
+        }
+        return List.of();
+    }
+
+    public boolean isSearchSuccessful(String snapshotId, int waitTimeInMillis) throws IOException, InterruptedException {
+        int maxWaitTimeInMillis = waitTimeInMillis;
+        int waitIntervalInMillis = 400;
+        int waitedTime = 0;
+        while ((!getSnapshotStatus(snapshotId).get("snapshotStatus").equals("SUCCESSFUL")) && waitedTime < maxWaitTimeInMillis) {
+            TimeUnit.MILLISECONDS.sleep(waitIntervalInMillis);
+            waitedTime += waitIntervalInMillis;
+        }
+        return getSnapshotStatus(snapshotId).get("snapshotStatus").equals("SUCCESSFUL");
+    }
+
+    public boolean isSearchSuccessful(String snapshotId) throws IOException, InterruptedException {
+        return isSearchSuccessful(snapshotId, 10000);
+    }
+
+
     public String getSearchResultAsJson(String snapshotId) throws IOException {
         String url = String.format("%s/api/treeNode/search/snapshot/%s?pageSize=100", host, snapshotId);
         return getRequest(url);
@@ -229,7 +258,18 @@ public class EntityService {
 
         Class clazz = ModelRegistry.getClassByModel(model);
 
-        return jsonToEntityParser.parseResponse(json, clazz);
+        return jsonToEntityListParser.parseResponse(json, clazz);
+    }
+
+    public String getByIdAsJson(UUID id) throws IOException {
+        String url = String.format("%s/api/entity/TREE/%s", host, id);
+        return getRequest(url);
+    }
+
+    public <T extends BaseEntity> T getByIdAsObject(UUID id) throws IOException {
+        String json = getByIdAsJson(id);
+
+        return jsonToEntityParser.parseResponse(json);
     }
 
     public String getRequest(String url) throws IOException {
@@ -243,26 +283,6 @@ public class EntityService {
             HttpEntity entity = response.getEntity();
             return EntityUtils.toString(entity);
         }
-    }
-
-    public <T extends BaseEntity> List<T> getSearchResultAsEntities(String model, String version, SearchConditionRequest conditionRequest) throws IOException, InterruptedException {
-        var clazz = ModelRegistry.getClassByModel(model);
-
-        var snapshotId = runSearchAndGetSnapshotId(model, version, conditionRequest);
-
-        int maxWaitTimeInMillis = 10000;
-        int waitIntervalInMillis = 400;
-        int waitedTime = 0;
-        while ((!getSnapshotStatus(snapshotId).get("snapshotStatus").equals("SUCCESSFUL")) && waitedTime < maxWaitTimeInMillis) {
-            TimeUnit.MILLISECONDS.sleep(waitIntervalInMillis);
-            waitedTime += waitIntervalInMillis;
-        }
-        if (!getSnapshotStatus(snapshotId).get("snapshotStatus").equals("SUCCESSFUL")) {
-            throw new IllegalStateException("Timeout: report is not ready");
-        }
-
-        var response = getSearchResultAsJson(snapshotId);
-        return (List<T>) jsonToEntityParser.parseResponse(response, clazz);
     }
 
     public HttpResponse launchTransition(UUID id, String transition) throws IOException {

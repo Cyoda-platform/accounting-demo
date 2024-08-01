@@ -13,7 +13,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -30,7 +32,7 @@ public class EntityServiceTest {
     private Randomizer random;
 
     @Autowired
-    private JsonToEntityParser jsonToEntityParser;
+    private JsonToEntityListParser jsonToEntityListParser;
 
     private ObjectMapper om = new ObjectMapper();
 
@@ -180,7 +182,7 @@ public class EntityServiceTest {
     }
 
     @Test
-    public void deleteEntityByRootId() throws Exception {
+    public void deleteEntityByRootIdTest() throws Exception {
 
         var nEmployees = 1;
         var nReports = 1;
@@ -219,18 +221,21 @@ public class EntityServiceTest {
                 new Condition("simple", "$.city", "EQUALS", "FirstCity"),
                 new Condition("simple", "$.city", "EQUALS", "SecondCity")
         ));
-        var searchId = entityService.runSearchAndGetSnapshotId("expense_report_nested", "1", conditionRequest);
+        var snapshotId = entityService.runSearchAndGetSnapshotId("expense_report_nested", "1", conditionRequest);
 
-        var status = entityService.getSnapshotStatus(searchId);
-        assertThat(status.get("snapshotStatus")).isEqualTo("SUCCESSFUL");
+        assertThat(entityService.isSearchSuccessful(snapshotId)).isTrue();
 
-        String json = entityService.getSearchResultAsJson(searchId);
-        var entities = jsonToEntityParser.parseResponse(json, ExpenseReportNested.class);
+        String json = entityService.getSearchResultAsJson(snapshotId);
+        var entities = (List<ExpenseReportNested>) jsonToEntityListParser.parseResponse(json, ExpenseReportNested.class);
         assertThat(entities.size()).isEqualTo(2);
+        Set<String> cities = entities.stream()
+                .map(e -> e.getCity())
+                .collect(Collectors.toSet());
+        assertThat(cities).contains("FirstCity", "SecondCity");
     }
 
     @Test
-    public void getAllEntitiesByModel() throws Exception {
+    public void getAllEntitiesByModelTest() throws Exception {
         var nEmployees = 3;
         var employees = entityGenerator.generateEmployees(nEmployees);
         entityService.saveEntities(employees);
@@ -242,6 +247,32 @@ public class EntityServiceTest {
         entityService.saveEntities(reports);
         var reportsFromDb = entityService.getAllEntitiesAsObjects("expense_report_nested", "1");
         assertThat(reportsFromDb.size()).isEqualTo(nReports);
+    }
+
+    @Test
+    public void getByIdAsObjectTest() throws Exception {
+        var nEmployees = 1;
+        var employees = entityGenerator.generateEmployees(nEmployees);
+        entityService.saveEntities(employees);
+
+        var employeesFromDb = entityService.getAllEntitiesAsObjects("employee", "1");
+        assertThat(employeesFromDb.size()).isEqualTo(nEmployees);
+
+        var employeeId = employeesFromDb.get(0).getId();
+        var employeeFromDb = entityService.getByIdAsObject(employeeId);
+        assertThat(employeeFromDb).isEqualTo(employeesFromDb.get(0));
+
+
+        var nReports = 1;
+        var reports = entityGenerator.generateNestedReports(nReports);
+        entityService.saveEntities(reports);
+        var reportsFromDb = entityService.getAllEntitiesAsObjects("expense_report_nested", "1");
+        assertThat(reportsFromDb.size()).isEqualTo(nReports);
+
+        var reportId = reportsFromDb.get(0).getId();
+        var reportFromDb = entityService.getByIdAsObject(reportId);
+
+        assertThat(reportFromDb).isEqualTo(reportsFromDb.get(0));
     }
 
     @Test

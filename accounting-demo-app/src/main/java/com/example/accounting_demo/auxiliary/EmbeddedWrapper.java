@@ -25,4 +25,27 @@ public class EmbeddedWrapper {
         private String id;
         private Object tree;
     }
+
+    @Getter
+    @Setter
+    public static class SingleTreeWrapper {
+        private Metadata meta;
+        private Object tree;
+    }
+
+    @Getter
+    @Setter
+    public static class Metadata {
+        private String id;
+        private String type;
+        private ModelKey modelKey;
+    }
+
+    @Getter
+    @Setter
+    public static class ModelKey {
+        private String legalEntityId;
+        private String modelName;
+        private int version;
+    }
 }

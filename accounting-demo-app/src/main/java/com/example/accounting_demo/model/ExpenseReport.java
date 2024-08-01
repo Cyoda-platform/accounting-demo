@@ -4,6 +4,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.sql.Timestamp;
+import java.util.Objects;
 import java.util.UUID;
 
 @Getter
@@ -24,5 +25,23 @@ public class ExpenseReport extends BaseEntity {
                 ", departureDate=" + departureDate +
                 ", totalAmount='" + totalAmount + '\'' +
                 '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        ExpenseReport report = (ExpenseReport) o;
+        return Objects.equals(super.getId(), report.getId()) &&
+                Objects.equals(employeeId, report.employeeId) &&
+                Objects.equals(city, report.city) &&
+                Objects.equals(departureDate, report.departureDate) &&
+                Objects.equals(totalAmount, report.totalAmount);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(super.hashCode(), employeeId, city, departureDate, totalAmount);
     }
 }
