@@ -3,6 +3,8 @@ package com.example.accounting_demo.model;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.sql.Timestamp;
 import java.util.List;
 import java.util.Objects;
@@ -16,7 +18,7 @@ public class ExpenseReportNested extends BaseEntity {
     private String city;
     private Timestamp departureDate;
     private List<Expense> expenseList;
-    private String totalAmount;
+    private BigDecimal totalAmount;
 
     @Override
     public String toString() {
@@ -28,6 +30,10 @@ public class ExpenseReportNested extends BaseEntity {
                 ", expenseList=" + expenseList +
                 ", totalAmount='" + totalAmount + '\'' +
                 '}';
+    }
+
+    public void setTotalAmount(BigDecimal totalAmount) {
+        this.totalAmount = totalAmount.setScale(2, RoundingMode.HALF_UP);
     }
 
     @Override

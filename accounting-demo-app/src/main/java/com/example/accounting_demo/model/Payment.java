@@ -3,6 +3,7 @@ package com.example.accounting_demo.model;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 @Getter
@@ -10,7 +11,7 @@ import java.util.UUID;
 public class Payment extends BaseEntity {
 
     private UUID expenseReportId;
-    private String amount;
+    private BigDecimal amount;
 
     @Override
     public String toString() {

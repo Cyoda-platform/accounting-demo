@@ -122,7 +122,29 @@ public class EntityService {
         httpPost.setHeader("Content-Type", "application/json");
         httpPost.setHeader("Authorization", "Bearer " + token);
 
-        StringEntity requestEntity = new StringEntity(convertListToJson(entities), ContentType.APPLICATION_JSON);
+        var json = convertListToJson(entities);
+        StringEntity requestEntity = new StringEntity(json, ContentType.APPLICATION_JSON);
+
+        httpPost.setEntity(requestEntity);
+
+        logger.info("SAVE ENTITY REQUEST: " + om.writeValueAsString(httpPost.toString()));
+
+        try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
+            return response;
+        }
+    }
+
+    public <T extends BaseEntity> HttpResponse saveSingleEntity(T entity) throws IOException {
+        String model = ModelRegistry.getModelByClass(entity.getClass());
+
+        String url = String.format("%s/api/entity/new/JSON/TREE/%s/%s", host, model, MODEL_VERSION);
+        HttpPost httpPost = new HttpPost(url);
+
+        httpPost.setHeader("Content-Type", "application/json");
+        httpPost.setHeader("Authorization", "Bearer " + token);
+
+        var json = om.writeValueAsString(entity);
+        StringEntity requestEntity = new StringEntity(json, ContentType.APPLICATION_JSON);
 
         httpPost.setEntity(requestEntity);
 
@@ -337,8 +359,7 @@ public class EntityService {
 
         String fullColumnPath = "values@org#cyoda#entity#model#ValueMaps." + columnPath;
         String encodedColumnPath = URLEncoder.encode(fullColumnPath, StandardCharsets.UTF_8);
-        String entityId = id.toString();
-        String url = String.format("%s/api/platform-api/entity-info/fetch/lazy?entityClass=%s&entityId=%s&columnPath=%s", host, ENTITY_CLASS_NAME, entityId, encodedColumnPath);
+        String url = String.format("%s/api/platform-api/entity-info/fetch/lazy?entityClass=%s&entityId=%s&columnPath=%s", host, ENTITY_CLASS_NAME, id, encodedColumnPath);
         return getUrlString(url);
     }
 
@@ -359,16 +380,17 @@ public class EntityService {
         return jsonNode.get(0).get("value").asText();
     }
 
-    //TODO edit this method to take a list of columnPath+newValue
-    public HttpResponse updateValue(UUID id, String columnPath, JsonNode newValue) throws IOException {
+    public HttpResponse updateValue(UUID id, String columnPath, Object newValue, String transition) throws IOException {
         String entityId = id.toString();
         String url = host + "/api/platform-api/entity";
         HttpPut httpPut = new HttpPut(url);
         httpPut.setHeader("Authorization", "Bearer " + token);
         httpPut.setHeader("Content-Type", "application/json");
 
+        JsonNode jsonNode = om.valueToTree(newValue);
+
         String fullColumnPath = "values@org#cyoda#entity#model#ValueMaps." + columnPath;
-        StringEntity entity = getStringEntity(fullColumnPath, newValue, entityId);
+        StringEntity entity = getStringEntity(fullColumnPath, jsonNode, entityId, transition);
         httpPut.setEntity(entity);
 
         logger.info(om.writeValueAsString(httpPut.toString()));
@@ -381,12 +403,35 @@ public class EntityService {
         }
     }
 
-    private StringEntity getStringEntity(String columnPath, JsonNode value, String entityId) throws UnsupportedEncodingException {
+    public <T extends BaseEntity> HttpResponse updateEntity(T entity, String transitionName) throws IOException {
+        String model = ModelRegistry.getModelByClass(entity.getClass());
+        String entityId = entity.getId().toString();
+
+        String url = String.format("%s/api/entity/new/JSON/TREE/%s/%s?entityId=%s&transitionName=%s", host, model, MODEL_VERSION, entityId, transitionName);
+        HttpPost httpPost = new HttpPost(url);
+
+        httpPost.setHeader("Content-Type", "application/json");
+        httpPost.setHeader("Authorization", "Bearer " + token);
+
+        String json = om.writeValueAsString(entity);
+        StringEntity requestEntity = new StringEntity(json, ContentType.APPLICATION_JSON);
+        httpPost.setEntity(requestEntity);
+
+        logger.info("UPDATE ENTITY REQUEST: " + om.writeValueAsString(httpPost.toString()));
+
+        try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
+            String responseBody = EntityUtils.toString(response.getEntity());
+            logger.info("UPDATE RESPONSE: " + response.getStatusLine() + ", BODY: " + responseBody);
+            return response;
+        }
+    }
+
+    private StringEntity getStringEntity(String columnPath, JsonNode value, String entityId, String transition) throws UnsupportedEncodingException {
         String requestBody = String.format("""
                 {
                   "entityClass": "%s",
                   "entityId": "%s",
-                  "transition": "UPDATE",
+                  "transition": "%s",
                   "transactional": true,
                   "async": false,
                   "values": [
@@ -395,7 +440,7 @@ public class EntityService {
                       "value": %s
                     }
                   ]
-                }""", ENTITY_CLASS_NAME, entityId, columnPath, value);
+                }""", ENTITY_CLASS_NAME, entityId, transition, columnPath, value);
 
         return new StringEntity(requestBody);
     }

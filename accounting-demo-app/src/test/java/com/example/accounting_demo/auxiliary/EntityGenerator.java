@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -30,34 +31,6 @@ public class EntityGenerator {
 
     List<String> descriptions = List.of("hotel", "taxi", "transportation", "meals", "other");
 
-    public List<ExpenseReport> generateReports(int count, boolean fakeEmployeeId) throws IOException, InterruptedException {
-        List<ExpenseReport> reports = new ArrayList<>();
-
-        List<UUID> idList = fakeEmployeeId
-                ? List.of(fakeUuid)
-                : entityService.getAllEntitiesAsObjects("employee", "1").stream()
-                .map(BaseEntity::getId)
-                .toList();
-
-        for (int i = 0; i < count; i++) {
-            UUID employeeId = randomizer.getRandomElement(idList);
-
-            var report = Instancio.of(ExpenseReport.class)
-                    .ignore(Select.field(ExpenseReport::getId))
-                    .supply(Select.field(ExpenseReport::getEmployeeId), () -> employeeId)
-                    .supply(Select.field(ExpenseReport::getCity), () -> faker.country().capital())
-                    .supply(Select.field(ExpenseReport::getDepartureDate), () -> faker.date().past(1, TimeUnit.DAYS))
-                    .supply(Select.field(ExpenseReport::getTotalAmount), () -> faker.commerce().price(10, 1000))
-                    .create();
-            reports.add(report);
-        }
-        return reports;
-    }
-
-    public List<ExpenseReport> generateReports(int count) throws IOException, InterruptedException {
-        return generateReports(count, false);
-    }
-
     public List<ExpenseReportNested> generateNestedReports(int count, boolean fakeEmployeeId) throws IOException, InterruptedException {
         List<ExpenseReportNested> reports = new ArrayList<>();
 
@@ -76,7 +49,7 @@ public class EntityGenerator {
                     .supply(Select.field(ExpenseReportNested::getCity), () -> faker.country().capital())
                     .supply(Select.field(ExpenseReportNested::getDepartureDate), () -> faker.date().past(1, TimeUnit.DAYS))
                     .supply(Select.field(ExpenseReportNested::getExpenseList), () -> generateExpenseList(2))
-                    .supply(Select.field(ExpenseReportNested::getTotalAmount), () -> "0.00")
+                    .supply(Select.field(ExpenseReportNested::getTotalAmount), () -> new BigDecimal("0.00"))
                     .create();
             reports.add(report);
         }
@@ -94,7 +67,7 @@ public class EntityGenerator {
             var payment = Instancio.of(Payment.class)
                     .ignore(Select.field(Payment::getId))
                     .supply(Select.field(Payment::getExpenseReportId), () -> fakeUuid)
-                    .supply(Select.field(Payment::getAmount), () -> faker.commerce().price(10, 1000))
+                    .supply(Select.field(Payment::getAmount), () -> new BigDecimal(faker.commerce().price(10, 1000)))
                     .create();
             payments.add(payment);
         }
@@ -119,7 +92,7 @@ public class EntityGenerator {
         for (int i = 0; i < count; i++) {
             var expense = Instancio.of(Expense.class)
                     .supply(Select.field(Expense::getDescription), () -> (randomizer.getRandomElement(descriptions)))
-                    .supply(Select.field(Expense::getAmount), () -> faker.commerce().price(10, 100))
+                    .supply(Select.field(Expense::getAmount), () -> new BigDecimal(faker.commerce().price(10, 100)))
                     .create();
             expenses.add(expense);
         }

@@ -1,6 +1,7 @@
 package com.example.accounting_demo.processor;
 
-import com.example.accounting_demo.model.ExpenseReport;
+import com.example.accounting_demo.model.Expense;
+import com.example.accounting_demo.model.ExpenseReportNested;
 import com.example.accounting_demo.model.Payment;
 import com.example.accounting_demo.service.EntityService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -13,6 +14,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 import java.util.Random;
 import java.util.UUID;
@@ -37,12 +40,6 @@ public class CyodaCalculationMemberProcessor {
         response.setRequestId(request.getRequestId());
         response.setEntityId(request.getEntityId());
 
-        DataPayload payload = new DataPayload();
-        payload.setType("TreeNode");
-        payload.setData(request.getPayload() != null ? request.getPayload().getData() : null);
-
-        response.setPayload(payload);
-
         switch (request.getProcessorName()) {
             case "sendNotification":
                 sendNotification(request);
@@ -56,7 +53,12 @@ public class CyodaCalculationMemberProcessor {
             case "postPayment":
                 postPayment(request);
                 break;
-
+            case "calculateTotalAmount":
+                DataPayload payload = new DataPayload();
+                payload.setType("TREE");
+                payload.setData(calculateTotalAmount(request));
+                response.setPayload(payload);
+                break;
             default:
                 logger.info("No corresponding processor found");
                 break;
@@ -66,8 +68,29 @@ public class CyodaCalculationMemberProcessor {
     }
 
     private void postPayment(EntityProcessorCalculationRequest request) throws IOException {
-        var expenseReportId = entityService.getValue(UUID.fromString(request.getEntityId()), "timeuuids.[.expenseReportId]");
-        entityService.launchTransition(UUID.fromString(expenseReportId), "POST_PAYMENT");
+        var data = request.getPayload().getData();
+        String dataJson = mapper.writeValueAsString(data);
+        Payment payment = mapper.readValue(dataJson, Payment.class);
+        var expenseReportId = payment.getExpenseReportId();
+        entityService.launchTransition(expenseReportId, "POST_PAYMENT");
+    }
+
+    private Object calculateTotalAmount(EntityProcessorCalculationRequest request) throws IOException, InterruptedException {
+        var reportId = UUID.fromString(request.getEntityId());
+        var data = request.getPayload().getData();
+        String dataJson = mapper.writeValueAsString(data);
+        ExpenseReportNested report = mapper.readValue(dataJson, ExpenseReportNested.class);
+        report.setId(reportId);
+
+        List<Expense> expensesList = report.getExpenseList();
+        BigDecimal multiplier = new BigDecimal("0.5");
+        BigDecimal calculatedAmount = expensesList.stream()
+                .map(expense -> expense.getDescription().equals("meals") ? expense.getAmount().multiply(multiplier) : expense.getAmount())
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .setScale(2, RoundingMode.HALF_UP);
+        report.setTotalAmount(calculatedAmount);
+
+        return report;
     }
 
     private void sendToBank(EntityProcessorCalculationRequest request) throws IOException {
@@ -106,18 +129,17 @@ public class CyodaCalculationMemberProcessor {
         logger.info("E-MAIL RECEIVED: ER with id: {}{}", request.getEntityId(), message);
     }
 
-    //creates and saves new payment entity
     public void createPayment(EntityProcessorCalculationRequest request) throws IOException {
         var data = request.getPayload().getData();
         String dataJson = mapper.writeValueAsString(data);
 
-        ExpenseReport report = mapper.readValue(dataJson, ExpenseReport.class);
-        String totalAmount = report.getTotalAmount();
+        ExpenseReportNested report = mapper.readValue(dataJson, ExpenseReportNested.class);
+        BigDecimal totalAmount = report.getTotalAmount();
 
         Payment payment = new Payment();
         payment.setExpenseReportId(UUID.fromString(request.getEntityId()));
         payment.setAmount(totalAmount);
 
-        entityService.saveEntities(List.of(payment));
+        entityService.saveSingleEntity(payment);
     }
 }

@@ -13,12 +13,10 @@ public class ModelRegistry {
 
     static {
         modelToClassMap.put("payment", Payment.class);
-        modelToClassMap.put("expense_report", ExpenseReport.class);
         modelToClassMap.put("expense_report_nested", ExpenseReportNested.class);
         modelToClassMap.put("employee", Employee.class);
 
         classToModelMap.put(Payment.class, "payment");
-        classToModelMap.put(ExpenseReport.class, "expense_report");
         classToModelMap.put(ExpenseReportNested.class, "expense_report_nested");
         classToModelMap.put(Employee.class, "employee");
     }
