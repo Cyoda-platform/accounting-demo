@@ -31,7 +31,7 @@ public class EntityGenerator {
 
     List<String> descriptions = List.of("hotel", "taxi", "transportation", "meals", "other");
 
-    public List<ExpenseReportNested> generateNestedReports(int count, boolean fakeEmployeeId) throws IOException, InterruptedException {
+    public List<ExpenseReportNested> generateNestedReports(int count, boolean fakeEmployeeId) throws IOException {
         List<ExpenseReportNested> reports = new ArrayList<>();
 
         List<UUID> idList = fakeEmployeeId

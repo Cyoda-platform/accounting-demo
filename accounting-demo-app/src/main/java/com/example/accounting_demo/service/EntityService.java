@@ -246,10 +246,9 @@ public class EntityService {
     }
 
     public boolean isSearchSuccessful(String snapshotId, int waitTimeInMillis) throws IOException, InterruptedException {
-        int maxWaitTimeInMillis = waitTimeInMillis;
         int waitIntervalInMillis = 400;
         int waitedTime = 0;
-        while ((!getSnapshotStatus(snapshotId).get("snapshotStatus").equals("SUCCESSFUL")) && waitedTime < maxWaitTimeInMillis) {
+        while ((!getSnapshotStatus(snapshotId).get("snapshotStatus").equals("SUCCESSFUL")) && waitedTime < waitTimeInMillis) {
             TimeUnit.MILLISECONDS.sleep(waitIntervalInMillis);
             waitedTime += waitIntervalInMillis;
         }

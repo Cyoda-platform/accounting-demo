@@ -35,8 +35,6 @@ public class EntityServiceTest {
     @Autowired
     private JsonToEntityListParser jsonToEntityListParser;
 
-    private ObjectMapper om = new ObjectMapper();
-
     @BeforeEach
     void addEntityModels() throws IOException, InterruptedException {
         entityService.deleteAllEntitiesByModel("expense_report_nested");
@@ -240,7 +238,7 @@ public class EntityServiceTest {
         var entities = (List<ExpenseReportNested>) jsonToEntityListParser.parseResponse(json, ExpenseReportNested.class);
         assertThat(entities.size()).isEqualTo(2);
         Set<String> cities = entities.stream()
-                .map(e -> e.getCity())
+                .map(ExpenseReportNested::getCity)
                 .collect(Collectors.toSet());
         assertThat(cities).contains("FirstCity", "SecondCity");
     }

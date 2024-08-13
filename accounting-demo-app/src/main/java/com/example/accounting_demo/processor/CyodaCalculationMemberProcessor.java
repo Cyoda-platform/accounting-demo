@@ -75,7 +75,7 @@ public class CyodaCalculationMemberProcessor {
         entityService.launchTransition(expenseReportId, "POST_PAYMENT");
     }
 
-    private Object calculateTotalAmount(EntityProcessorCalculationRequest request) throws IOException, InterruptedException {
+    private Object calculateTotalAmount(EntityProcessorCalculationRequest request) throws IOException {
         var reportId = UUID.fromString(request.getEntityId());
         var data = request.getPayload().getData();
         String dataJson = mapper.writeValueAsString(data);
