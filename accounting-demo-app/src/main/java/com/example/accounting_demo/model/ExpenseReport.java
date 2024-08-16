@@ -12,28 +12,28 @@ import java.util.UUID;
 
 @Getter
 @Setter
-public class ExpenseReportNested extends BaseEntity {
+public class ExpenseReport extends BaseEntity {
 
     private UUID employeeId;
-    private String city;
+    private String destination;
     private Timestamp departureDate;
     private List<Expense> expenseList;
-    private BigDecimal totalAmount;
+    private BigDecimal amountPayable;
 
     @Override
     public String toString() {
-        return "ExpenseReportNested{" +
+        return "ExpenseReport{" +
                 "id=" + super.getId() +
                 ", employeeId='" + employeeId + '\'' +
-                ", city='" + city + '\'' +
+                ", destination='" + destination + '\'' +
                 ", departureDate=" + departureDate +
                 ", expenseList=" + expenseList +
-                ", totalAmount='" + totalAmount + '\'' +
+                ", amountPayable='" + amountPayable + '\'' +
                 '}';
     }
 
-    public void setTotalAmount(BigDecimal totalAmount) {
-        this.totalAmount = totalAmount.setScale(2, RoundingMode.HALF_UP);
+    public void setAmountPayable(BigDecimal amountPayable) {
+        this.amountPayable = amountPayable.setScale(2, RoundingMode.HALF_UP);
     }
 
     @Override
@@ -41,17 +41,17 @@ public class ExpenseReportNested extends BaseEntity {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
-        ExpenseReportNested report = (ExpenseReportNested) o;
+        ExpenseReport report = (ExpenseReport) o;
         return Objects.equals(super.getId(), report.getId()) &&
                 Objects.equals(employeeId, report.employeeId) &&
-                Objects.equals(city, report.city) &&
+                Objects.equals(destination, report.destination) &&
                 Objects.equals(departureDate, report.departureDate) &&
                 Objects.equals(expenseList, report.expenseList) &&
-                Objects.equals(totalAmount, report.totalAmount);
+                Objects.equals(amountPayable, report.amountPayable);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(super.hashCode(), employeeId, city, departureDate, expenseList, totalAmount);
+        return Objects.hash(super.hashCode(), employeeId, destination, departureDate, expenseList, amountPayable);
     }
 }

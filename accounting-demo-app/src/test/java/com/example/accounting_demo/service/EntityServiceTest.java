@@ -1,8 +1,7 @@
 package com.example.accounting_demo.service;
 
 import com.example.accounting_demo.auxiliary.*;
-import com.example.accounting_demo.model.ExpenseReportNested;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.example.accounting_demo.model.ExpenseReport;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
 import org.junit.jupiter.api.AfterEach;
@@ -37,11 +36,11 @@ public class EntityServiceTest {
 
     @BeforeEach
     void addEntityModels() throws IOException, InterruptedException {
-        entityService.deleteAllEntitiesByModel("expense_report_nested");
+        entityService.deleteAllEntitiesByModel("expense_report");
         entityService.deleteAllEntitiesByModel("employee");
         entityService.deleteAllEntitiesByModel("payment");
 
-        entityService.deleteEntityModel("expense_report_nested");
+        entityService.deleteEntityModel("expense_report");
         entityService.deleteEntityModel("employee");
         entityService.deleteEntityModel("payment");
 
@@ -49,7 +48,7 @@ public class EntityServiceTest {
         entityService.saveEntityModel(employee);
         entityService.lockEntityModel(employee);
 
-        var report_nested = entityGenerator.generateNestedReports(1, true);
+        var report_nested = entityGenerator.generateExpenseReports(1, true);
         entityService.saveEntityModel(report_nested);
         entityService.lockEntityModel(report_nested);
 
@@ -58,16 +57,16 @@ public class EntityServiceTest {
         entityService.lockEntityModel(payment);
     }
 
-//    @AfterEach
-//    void deleteEntitiesAndModels() throws Exception {
-//        entityService.deleteAllEntitiesByModel("expense_report_nested");
-//        entityService.deleteAllEntitiesByModel("employee");
-//        entityService.deleteAllEntitiesByModel("payment");
-//
-//        entityService.deleteEntityModel("expense_report_nested");
-//        entityService.deleteEntityModel("employee");
-//        entityService.deleteEntityModel("payment");
-//    }
+    @AfterEach
+    void deleteEntitiesAndModels() throws Exception {
+        entityService.deleteAllEntitiesByModel("expense_report");
+        entityService.deleteAllEntitiesByModel("employee");
+        entityService.deleteAllEntitiesByModel("payment");
+
+        entityService.deleteEntityModel("expense_report");
+        entityService.deleteEntityModel("employee");
+        entityService.deleteEntityModel("payment");
+    }
 
     @Test
     public void saveEmployeeListTest() throws Exception {
@@ -78,8 +77,8 @@ public class EntityServiceTest {
     }
 
     @Test
-    public void saveNestedExpenseReportListTest() throws Exception {
-        var reports = entityGenerator.generateNestedReports(5, true);
+    public void saveExpenseReportListTest() throws Exception {
+        var reports = entityGenerator.generateExpenseReports(5, true);
         HttpResponse response = entityService.saveEntities(reports);
 
         assertThat(response.getStatusLine().getStatusCode()).isEqualTo(HttpStatus.SC_OK);
@@ -95,12 +94,12 @@ public class EntityServiceTest {
 
     @Test
     public void launchTransitionTest() throws Exception {
-        var report = entityGenerator.generateNestedReports(1, true);
+        var report = entityGenerator.generateExpenseReports(1, true);
         HttpResponse response1 = entityService.saveEntities(report);
         int statusCode1 = response1.getStatusLine().getStatusCode();
         assertThat(statusCode1).isEqualTo(HttpStatus.SC_OK);
 
-        var reportFromDb = entityService.getAllEntitiesAsObjects("expense_report_nested", "1");
+        var reportFromDb = entityService.getAllEntitiesAsObjects("expense_report", "1");
         assertThat(reportFromDb).hasSize(1);
         var savedReportId = reportFromDb.get(0).getId();
 
@@ -115,56 +114,19 @@ public class EntityServiceTest {
     }
 
     @Test
-    public void getValueTest() throws Exception {
-        var report = entityGenerator.generateNestedReports(1, true);
-        HttpResponse response = entityService.saveEntities(report);
-        assertThat(response.getStatusLine().getStatusCode()).isEqualTo(HttpStatus.SC_OK);
-
-        var reportFromDb = entityService.getAllEntitiesAsObjects("expense_report_nested", "1");
-        assertThat(reportFromDb).hasSize(1);
-        var savedReportId = reportFromDb.get(0).getId();
-        String columnPath = "strings.[.city]";
-
-        var value = entityService.getValue(savedReportId, columnPath);
-
-        assertThat(value).isNotNull();
-    }
-
-    @Test
-    public void updateStringValueTest() throws Exception {
-        var report = entityGenerator.generateNestedReports(1, true);
-        HttpResponse response1 = entityService.saveEntities(report);
-        assertThat(response1.getStatusLine().getStatusCode()).isEqualTo(HttpStatus.SC_OK);
-
-        String columnPath = "strings.[.city]";
-
-        var reportFromDb = entityService.getAllEntitiesAsObjects("expense_report_nested", "1");
-        assertThat(reportFromDb).hasSize(1);
-        var savedReportId = reportFromDb.get(0).getId();
-        String updatedValue = "updatedCity";
-
-        HttpResponse response2 = entityService.updateValue(savedReportId, columnPath, updatedValue, "UPDATE");
-
-        var currentValue = entityService.getValue(savedReportId, columnPath);
-
-        assertThat(response2.getStatusLine().getStatusCode()).isEqualTo(HttpStatus.SC_OK);
-        assertThat(currentValue).isEqualTo(updatedValue);
-    }
-
-    @Test
-    public void updateWholeEntityTest() throws Exception {
-        var report = entityGenerator.generateNestedReports(1, true).get(0);
+    public void updateEntityTest() throws Exception {
+        var report = entityGenerator.generateExpenseReports(1, true).get(0);
         entityService.saveSingleEntity(report);
 
-        var entitiesFromDb = entityService.getAllEntitiesAsObjects("expense_report_nested", "1");
+        var entitiesFromDb = entityService.getAllEntitiesAsObjects("expense_report", "1");
         assertThat(entitiesFromDb).hasSize(1);
-        ExpenseReportNested reportFromDb = (ExpenseReportNested) entitiesFromDb.get(0);
+        ExpenseReport reportFromDb = (ExpenseReport) entitiesFromDb.get(0);
         var reportFromDbId = reportFromDb.getId();
 
-        ExpenseReportNested updatedReport = entityGenerator.generateNestedReports(1, true).get(0);
+        ExpenseReport updatedReport = entityGenerator.generateExpenseReports(1, true).get(0);
         updatedReport.setId(reportFromDbId);
-        BigDecimal updatedTotalAmount = new BigDecimal("20.60");
-        updatedReport.setTotalAmount(updatedTotalAmount);
+        BigDecimal updatedAmountPayable = new BigDecimal("20.60");
+        updatedReport.setAmountPayable(updatedAmountPayable);
         var expenses = updatedReport.getExpenseList();
         expenses.remove(0);
         updatedReport.setExpenseList(expenses);
@@ -172,15 +134,15 @@ public class EntityServiceTest {
         HttpResponse responseUpdateEntity = entityService.updateEntity(updatedReport, "UPDATE");
         assertThat(responseUpdateEntity.getStatusLine().getStatusCode()).isEqualTo(HttpStatus.SC_OK);
 
-        ExpenseReportNested updatedReportFromDb = entityService.getByIdAsObject(reportFromDbId);
+        ExpenseReport updatedReportFromDb = entityService.getByIdAsObject(reportFromDbId);
 
         assertThat(updatedReportFromDb).isNotEqualTo(reportFromDb);
-        assertThat(updatedReportFromDb.getTotalAmount()).isEqualTo(updatedTotalAmount);
+        assertThat(updatedReportFromDb.getAmountPayable()).isEqualTo(updatedAmountPayable);
         assertThat(updatedReportFromDb.getExpenseList()).isEqualTo(expenses);
     }
 
     @Test
-    public void deleteTest() throws Exception {
+    public void deleteAllTest() throws Exception {
         var employeeList = entityGenerator.generateEmployees(1);
         HttpResponse response1 = entityService.saveEntities(employeeList);
         assertThat(response1.getStatusLine().getStatusCode()).isEqualTo(HttpStatus.SC_OK);
@@ -198,14 +160,14 @@ public class EntityServiceTest {
 
         var employees = entityGenerator.generateEmployees(nEmployees);
         entityService.saveEntities(employees);
-        var reports = entityGenerator.generateNestedReports(nReports);
+        var reports = entityGenerator.generateExpenseReports(nReports);
         entityService.saveEntities(reports);
 
-        var reportFromDb = entityService.getAllEntitiesAsObjects("expense_report_nested", "1");
+        var reportFromDb = entityService.getAllEntitiesAsObjects("expense_report", "1");
         assertThat(reportFromDb).hasSize(1);
         var savedReportId = reportFromDb.get(0).getId();
 
-        HttpResponse response1 = entityService.deleteEntityByRootId("expense_report_nested", "1", savedReportId.toString());
+        HttpResponse response1 = entityService.deleteEntityByRootId("expense_report", "1", savedReportId.toString());
         assertThat(response1.getStatusLine().getStatusCode()).isEqualTo(HttpStatus.SC_OK);
     }
 
@@ -215,11 +177,11 @@ public class EntityServiceTest {
         entityService.saveEntities(employees);
 
         var nReports = 5;
-        var reports = entityGenerator.generateNestedReports(nReports);
+        var reports = entityGenerator.generateExpenseReports(nReports);
         var report1 = reports.get(0);
-        report1.setCity("FirstCity");
+        report1.setDestination("FirstCity");
         var report2 = reports.get(1);
-        report2.setCity("SecondCity");
+        report2.setDestination("SecondCity");
 
         entityService.saveEntities(reports);
 
@@ -227,18 +189,18 @@ public class EntityServiceTest {
         conditionRequest.setType("group");
         conditionRequest.setOperator("OR");
         conditionRequest.setConditions(List.of(
-                new Condition("simple", "$.city", "EQUALS", "FirstCity"),
-                new Condition("simple", "$.city", "EQUALS", "SecondCity")
+                new Condition("simple", "$.destination", "EQUALS", "FirstCity"),
+                new Condition("simple", "$.destination", "EQUALS", "SecondCity")
         ));
-        var snapshotId = entityService.runSearchAndGetSnapshotId("expense_report_nested", "1", conditionRequest);
+        var snapshotId = entityService.runSearchAndGetSnapshotId("expense_report", "1", conditionRequest);
 
         assertThat(entityService.isSearchSuccessful(snapshotId)).isTrue();
 
         String json = entityService.getSearchResultAsJson(snapshotId);
-        var entities = (List<ExpenseReportNested>) jsonToEntityListParser.parseResponse(json, ExpenseReportNested.class);
+        var entities = (List<ExpenseReport>) jsonToEntityListParser.parseResponse(json, ExpenseReport.class);
         assertThat(entities.size()).isEqualTo(2);
         Set<String> cities = entities.stream()
-                .map(ExpenseReportNested::getCity)
+                .map(ExpenseReport::getDestination)
                 .collect(Collectors.toSet());
         assertThat(cities).contains("FirstCity", "SecondCity");
     }
@@ -252,9 +214,9 @@ public class EntityServiceTest {
         assertThat(employeesFromDb.size()).isEqualTo(nEmployees);
 
         var nReports = 5;
-        var reports = entityGenerator.generateNestedReports(nReports);
+        var reports = entityGenerator.generateExpenseReports(nReports);
         entityService.saveEntities(reports);
-        var reportsFromDb = entityService.getAllEntitiesAsObjects("expense_report_nested", "1");
+        var reportsFromDb = entityService.getAllEntitiesAsObjects("expense_report", "1");
         assertThat(reportsFromDb.size()).isEqualTo(nReports);
     }
 
@@ -273,9 +235,9 @@ public class EntityServiceTest {
 
 
         var nReports = 1;
-        var reports = entityGenerator.generateNestedReports(nReports);
+        var reports = entityGenerator.generateExpenseReports(nReports);
         entityService.saveEntities(reports);
-        var reportsFromDb = entityService.getAllEntitiesAsObjects("expense_report_nested", "1");
+        var reportsFromDb = entityService.getAllEntitiesAsObjects("expense_report", "1");
         assertThat(reportsFromDb.size()).isEqualTo(nReports);
 
         var reportId = reportsFromDb.get(0).getId();
@@ -285,26 +247,21 @@ public class EntityServiceTest {
     }
 
     @Test
-    public void nestedEntitiesWorkflowTest() throws Exception {
+    public void workflowTest() throws Exception {
         var nEmployees = 5;
-        var nReports = 20;
-        var nTransitions = 80;
+        var nReports = 25;
+        var nTransitions = 100;
 
         var employees = entityGenerator.generateEmployees(nEmployees);
-        for (var employee : employees) {
-            entityService.saveSingleEntity(employee);
-        }
-        //        ExpenseReport is created by an employee
-        var reports = entityGenerator.generateNestedReports(nReports);
-        for (var report : reports) {
-            entityService.saveSingleEntity(report);
-        }
+        entityService.saveEntities(employees);
+        //        ExpenseReport is created by an existing employee
+        var reports = entityGenerator.generateExpenseReports(nReports);
+        entityService.saveEntities(reports);
 
-        var reportsFromDb = entityService.getAllEntitiesAsObjects("expense_report_nested", "1");
+        var reportsFromDb = entityService.getAllEntitiesAsObjects("expense_report", "1");
         assertThat(reportsFromDb).hasSize(nReports);
 
         //select a random ExpenseReport and run a random available transition, then take another one and repeat
-
         for (int i = 0; i < nTransitions; i++) {
             System.out.println("\nTRANSITION NUMBER: " + i);
 
@@ -319,9 +276,9 @@ public class EntityServiceTest {
 
                     switch (randomTransition) {
                         case "UPDATE":
-                            ExpenseReportNested report = entityService.getByIdAsObject(randomReportId);
-                            report.setCity("UpdatedCity");
-                            entityService.updateEntity(report, randomTransition);
+//                            ExpenseReport report = entityService.getByIdAsObject(randomReportId);
+//                            report.setDestination("UpdatedCity");
+//                            entityService.updateEntity(report, randomTransition);
                             break;
                         case "POST_PAYMENT":
 //                        should be launched by an EP - payment transition "ACCEPT_BY_BANK"

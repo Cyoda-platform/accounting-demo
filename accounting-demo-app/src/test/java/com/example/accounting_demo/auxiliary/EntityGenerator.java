@@ -31,8 +31,8 @@ public class EntityGenerator {
 
     List<String> descriptions = List.of("hotel", "taxi", "transportation", "meals", "other");
 
-    public List<ExpenseReportNested> generateNestedReports(int count, boolean fakeEmployeeId) throws IOException {
-        List<ExpenseReportNested> reports = new ArrayList<>();
+    public List<ExpenseReport> generateExpenseReports(int count, boolean fakeEmployeeId) throws IOException {
+        List<ExpenseReport> reports = new ArrayList<>();
 
         List<UUID> idList = fakeEmployeeId
                 ? List.of(fakeUuid)
@@ -43,21 +43,21 @@ public class EntityGenerator {
         for (int i = 0; i < count; i++) {
             UUID employeeId = randomizer.getRandomElement(idList);
 
-            var report = Instancio.of(ExpenseReportNested.class)
-                    .ignore(Select.field(ExpenseReportNested::getId))
-                    .supply(Select.field(ExpenseReportNested::getEmployeeId), () -> employeeId)
-                    .supply(Select.field(ExpenseReportNested::getCity), () -> faker.country().capital())
-                    .supply(Select.field(ExpenseReportNested::getDepartureDate), () -> faker.date().past(1, TimeUnit.DAYS))
-                    .supply(Select.field(ExpenseReportNested::getExpenseList), () -> generateExpenseList(2))
-                    .supply(Select.field(ExpenseReportNested::getTotalAmount), () -> new BigDecimal("0.00"))
+            var report = Instancio.of(ExpenseReport.class)
+                    .ignore(Select.field(ExpenseReport::getId))
+                    .supply(Select.field(ExpenseReport::getEmployeeId), () -> employeeId)
+                    .supply(Select.field(ExpenseReport::getDestination), () -> faker.country().capital())
+                    .supply(Select.field(ExpenseReport::getDepartureDate), () -> faker.date().past(1, TimeUnit.DAYS))
+                    .supply(Select.field(ExpenseReport::getExpenseList), () -> generateExpenseList(2))
+                    .supply(Select.field(ExpenseReport::getAmountPayable), () -> new BigDecimal("0.00"))
                     .create();
             reports.add(report);
         }
         return reports;
     }
 
-    public List<ExpenseReportNested> generateNestedReports(int count) throws IOException, InterruptedException {
-        return generateNestedReports(count, false);
+    public List<ExpenseReport> generateExpenseReports(int count) throws IOException, InterruptedException {
+        return generateExpenseReports(count, false);
     }
 
     //given id is used for setting a new entity schema (Time UUID)

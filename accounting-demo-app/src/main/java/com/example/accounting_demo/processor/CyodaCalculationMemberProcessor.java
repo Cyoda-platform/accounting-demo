@@ -1,7 +1,7 @@
 package com.example.accounting_demo.processor;
 
 import com.example.accounting_demo.model.Expense;
-import com.example.accounting_demo.model.ExpenseReportNested;
+import com.example.accounting_demo.model.ExpenseReport;
 import com.example.accounting_demo.model.Payment;
 import com.example.accounting_demo.service.EntityService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -53,10 +53,10 @@ public class CyodaCalculationMemberProcessor {
             case "postPayment":
                 postPayment(request);
                 break;
-            case "calculateTotalAmount":
+            case "calculateAmountPayable":
                 DataPayload payload = new DataPayload();
                 payload.setType("TREE");
-                payload.setData(calculateTotalAmount(request));
+                payload.setData(calculateAmountPayable(request));
                 response.setPayload(payload);
                 break;
             default:
@@ -75,11 +75,11 @@ public class CyodaCalculationMemberProcessor {
         entityService.launchTransition(expenseReportId, "POST_PAYMENT");
     }
 
-    private Object calculateTotalAmount(EntityProcessorCalculationRequest request) throws IOException {
+    private Object calculateAmountPayable(EntityProcessorCalculationRequest request) throws IOException {
         var reportId = UUID.fromString(request.getEntityId());
         var data = request.getPayload().getData();
         String dataJson = mapper.writeValueAsString(data);
-        ExpenseReportNested report = mapper.readValue(dataJson, ExpenseReportNested.class);
+        ExpenseReport report = mapper.readValue(dataJson, ExpenseReport.class);
         report.setId(reportId);
 
         List<Expense> expensesList = report.getExpenseList();
@@ -88,7 +88,7 @@ public class CyodaCalculationMemberProcessor {
                 .map(expense -> expense.getDescription().equals("meals") ? expense.getAmount().multiply(multiplier) : expense.getAmount())
                 .reduce(BigDecimal.ZERO, BigDecimal::add)
                 .setScale(2, RoundingMode.HALF_UP);
-        report.setTotalAmount(calculatedAmount);
+        report.setAmountPayable(calculatedAmount);
 
         return report;
     }
@@ -133,12 +133,12 @@ public class CyodaCalculationMemberProcessor {
         var data = request.getPayload().getData();
         String dataJson = mapper.writeValueAsString(data);
 
-        ExpenseReportNested report = mapper.readValue(dataJson, ExpenseReportNested.class);
-        BigDecimal totalAmount = report.getTotalAmount();
+        ExpenseReport report = mapper.readValue(dataJson, ExpenseReport.class);
+        BigDecimal amountPayable = report.getAmountPayable();
 
         Payment payment = new Payment();
         payment.setExpenseReportId(UUID.fromString(request.getEntityId()));
-        payment.setAmount(totalAmount);
+        payment.setAmount(amountPayable);
 
         entityService.saveSingleEntity(payment);
     }

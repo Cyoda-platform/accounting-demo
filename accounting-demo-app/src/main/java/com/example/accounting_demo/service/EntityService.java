@@ -21,9 +21,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -123,6 +120,7 @@ public class EntityService {
         httpPost.setHeader("Authorization", "Bearer " + token);
 
         var json = convertListToJson(entities);
+        System.out.println(json);
         StringEntity requestEntity = new StringEntity(json, ContentType.APPLICATION_JSON);
 
         httpPost.setEntity(requestEntity);
@@ -266,16 +264,36 @@ public class EntityService {
     }
 
     public String getAllEntitiesAsJson(String model, String version) throws IOException {
-        return getAllEntitiesAsJson(model, version, 100);
+        return getAllEntitiesAsJson(model, version, 100, 1);
     }
 
     public String getAllEntitiesAsJson(String model, String version, int pageSize) throws IOException {
-        String url = String.format("%s/api/entity/TREE/%s/%s?pageSize=%s", host, model, version, pageSize);
+        return getAllEntitiesAsJson(model, version, pageSize, 1);
+    }
+
+    public String getAllEntitiesAsJson(String model, String version, int pageSize, int pageNumber) throws IOException {
+        String url = String.format("%s/api/entity/TREE/%s/%s?pageSize=%s&pageNumber=%s", host, model, version, pageSize, pageNumber);
         return getRequest(url);
     }
 
     public <T extends BaseEntity> List<T> getAllEntitiesAsObjects(String model, String version) throws IOException {
         String json = getAllEntitiesAsJson(model, version);
+
+        Class clazz = ModelRegistry.getClassByModel(model);
+
+        return jsonToEntityListParser.parseResponse(json, clazz);
+    }
+
+    public <T extends BaseEntity> List<T> getAllEntitiesAsObjects(String model, String version, int pageSize) throws IOException {
+        String json = getAllEntitiesAsJson(model, version, pageSize);
+
+        Class clazz = ModelRegistry.getClassByModel(model);
+
+        return jsonToEntityListParser.parseResponse(json, clazz);
+    }
+
+    public <T extends BaseEntity> List<T> getAllEntitiesAsObjects(String model, String version, int pageSize, int pageNumber) throws IOException {
+        String json = getAllEntitiesAsJson(model, version, pageSize, pageNumber);
 
         Class clazz = ModelRegistry.getClassByModel(model);
 
@@ -348,21 +366,9 @@ public class EntityService {
     }
 
     public String getCurrentState(UUID id) throws IOException {
-
         String entityId = id.toString();
         String url = String.format("%s/api/platform-api/entity-info/fetch/lazy?entityClass=%s&entityId=%s&columnPath=state", host, ENTITY_CLASS_NAME, entityId);
-        return getUrlString(url);
-    }
 
-    public String getValue(UUID id, String columnPath) throws IOException {
-
-        String fullColumnPath = "values@org#cyoda#entity#model#ValueMaps." + columnPath;
-        String encodedColumnPath = URLEncoder.encode(fullColumnPath, StandardCharsets.UTF_8);
-        String url = String.format("%s/api/platform-api/entity-info/fetch/lazy?entityClass=%s&entityId=%s&columnPath=%s", host, ENTITY_CLASS_NAME, id, encodedColumnPath);
-        return getUrlString(url);
-    }
-
-    private String getUrlString(String url) throws IOException {
         HttpGet httpGet = new HttpGet(url);
         httpGet.setHeader("Authorization", "Bearer " + token);
 
@@ -377,29 +383,6 @@ public class EntityService {
         }
 
         return jsonNode.get(0).get("value").asText();
-    }
-
-    public HttpResponse updateValue(UUID id, String columnPath, Object newValue, String transition) throws IOException {
-        String entityId = id.toString();
-        String url = host + "/api/platform-api/entity";
-        HttpPut httpPut = new HttpPut(url);
-        httpPut.setHeader("Authorization", "Bearer " + token);
-        httpPut.setHeader("Content-Type", "application/json");
-
-        JsonNode jsonNode = om.valueToTree(newValue);
-
-        String fullColumnPath = "values@org#cyoda#entity#model#ValueMaps." + columnPath;
-        StringEntity entity = getStringEntity(fullColumnPath, jsonNode, entityId, transition);
-        httpPut.setEntity(entity);
-
-        logger.info(om.writeValueAsString(httpPut.toString()));
-        String requestBody = EntityUtils.toString(entity);
-        Object json = om.readValue(requestBody, Object.class);
-        logger.info(om.writerWithDefaultPrettyPrinter().writeValueAsString(json));
-
-        try (CloseableHttpResponse response = httpClient.execute(httpPut)) {
-            return response;
-        }
     }
 
     public <T extends BaseEntity> HttpResponse updateEntity(T entity, String transitionName) throws IOException {
@@ -423,25 +406,6 @@ public class EntityService {
             logger.info("UPDATE RESPONSE: " + response.getStatusLine() + ", BODY: " + responseBody);
             return response;
         }
-    }
-
-    private StringEntity getStringEntity(String columnPath, JsonNode value, String entityId, String transition) throws UnsupportedEncodingException {
-        String requestBody = String.format("""
-                {
-                  "entityClass": "%s",
-                  "entityId": "%s",
-                  "transition": "%s",
-                  "transactional": true,
-                  "async": false,
-                  "values": [
-                    {
-                      "columnPath": "%s",
-                      "value": %s
-                    }
-                  ]
-                }""", ENTITY_CLASS_NAME, entityId, transition, columnPath, value);
-
-        return new StringEntity(requestBody);
     }
 }
 
