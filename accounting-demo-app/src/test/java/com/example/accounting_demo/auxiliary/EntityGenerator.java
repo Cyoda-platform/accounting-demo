@@ -56,7 +56,7 @@ public class EntityGenerator {
         return reports;
     }
 
-    public List<ExpenseReport> generateExpenseReports(int count) throws IOException, InterruptedException {
+    public List<ExpenseReport> generateExpenseReports(int count) throws IOException {
         return generateExpenseReports(count, false);
     }
 

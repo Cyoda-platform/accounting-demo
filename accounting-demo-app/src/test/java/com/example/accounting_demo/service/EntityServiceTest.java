@@ -35,7 +35,7 @@ public class EntityServiceTest {
     private JsonToEntityListParser jsonToEntityListParser;
 
     @BeforeEach
-    void addEntityModels() throws IOException, InterruptedException {
+    void addEntityModels() throws IOException {
         entityService.deleteAllEntitiesByModel("expense_report");
         entityService.deleteAllEntitiesByModel("employee");
         entityService.deleteAllEntitiesByModel("payment");
