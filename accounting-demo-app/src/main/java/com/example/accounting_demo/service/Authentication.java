@@ -2,6 +2,7 @@ package com.example.accounting_demo.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.Getter;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpPost;
@@ -30,6 +31,7 @@ public class Authentication {
     @Value("${cyoda.password}")
     private String password;
 
+    @Getter
     private String token;
 
     private final ObjectMapper om;
@@ -61,9 +63,5 @@ public class Authentication {
         token = rootNode.path("token").asText();
 
         httpClient.close();
-    }
-
-    public String getToken() {
-        return token;
     }
 }
