@@ -1,8 +1,9 @@
 cyoda:
-  host: ${HOST}
-  token: ${TOKEN}
+  host: ${HOST:}
+  name: ${NAME:}
+  password: ${PASSWORD:}
 grpc:
   server:
-    host: ${GRPC_HOST}
+    host: ${GRPC_HOST:}
     port: 443
     tls: true

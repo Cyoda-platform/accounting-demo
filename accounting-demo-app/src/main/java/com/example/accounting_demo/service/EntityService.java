@@ -31,7 +31,6 @@ import java.util.concurrent.TimeUnit;
 public class EntityService {
     private static final Logger logger = LoggerFactory.getLogger(EntityService.class);
 
-    @Value("${cyoda.token}")
     private String token;
 
     @Value("${cyoda.host}")
@@ -52,10 +51,15 @@ public class EntityService {
             .setConnectionRequestTimeout(5000)
             .build();
 
-    public EntityService(ObjectMapper om, JsonToEntityListParser jsonToEntityListParser, JsonToEntityParser jsonToEntityParser) {
+    public EntityService(ObjectMapper om, JsonToEntityListParser jsonToEntityListParser, JsonToEntityParser jsonToEntityParser, Authentication authentication) {
         this.om = om;
         this.jsonToEntityListParser = jsonToEntityListParser;
         this.jsonToEntityParser = jsonToEntityParser;
+        this.token = authentication.getToken();
+
+        if (this.token == null) {
+            throw new IllegalStateException("Token is not initialized");
+        }
     }
 
     public <T extends BaseEntity> HttpResponse saveEntityModel(List<T> entities) throws IOException {
