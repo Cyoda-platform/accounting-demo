@@ -18,6 +18,7 @@ public class ExpenseReport extends BaseEntity {
     private String destination;
     private Timestamp departureDate;
     private List<Expense> expenseList;
+    private BigDecimal advancePayment;
     private BigDecimal amountPayable;
 
     @Override
@@ -28,8 +29,13 @@ public class ExpenseReport extends BaseEntity {
                 ", destination='" + destination + '\'' +
                 ", departureDate=" + departureDate +
                 ", expenseList=" + expenseList +
+                ", advancePayment='" + advancePayment + '\'' +
                 ", amountPayable='" + amountPayable + '\'' +
                 '}';
+    }
+
+    public void setAdvancePayment(BigDecimal advancePayment) {
+        this.advancePayment = advancePayment.setScale(2, RoundingMode.HALF_UP);
     }
 
     public void setAmountPayable(BigDecimal amountPayable) {
@@ -47,11 +53,12 @@ public class ExpenseReport extends BaseEntity {
                 Objects.equals(destination, report.destination) &&
                 Objects.equals(departureDate, report.departureDate) &&
                 Objects.equals(expenseList, report.expenseList) &&
+                Objects.equals(advancePayment, report.advancePayment) &&
                 Objects.equals(amountPayable, report.amountPayable);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(super.hashCode(), employeeId, destination, departureDate, expenseList, amountPayable);
+        return Objects.hash(super.hashCode(), employeeId, destination, departureDate, expenseList, advancePayment, amountPayable);
     }
 }

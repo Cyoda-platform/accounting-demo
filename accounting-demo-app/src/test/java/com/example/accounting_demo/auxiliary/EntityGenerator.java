@@ -49,6 +49,7 @@ public class EntityGenerator {
                     .supply(Select.field(ExpenseReport::getDestination), () -> faker.country().capital())
                     .supply(Select.field(ExpenseReport::getDepartureDate), () -> faker.date().past(1, TimeUnit.DAYS))
                     .supply(Select.field(ExpenseReport::getExpenseList), () -> generateExpenseList(2))
+                    .supply(Select.field(ExpenseReport::getAdvancePayment), () -> new BigDecimal(faker.commerce().price(50, 100)))
                     .supply(Select.field(ExpenseReport::getAmountPayable), () -> new BigDecimal("0.00"))
                     .create();
             reports.add(report);

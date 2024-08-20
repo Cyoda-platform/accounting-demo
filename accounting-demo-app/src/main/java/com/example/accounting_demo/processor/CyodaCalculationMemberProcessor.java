@@ -88,6 +88,7 @@ public class CyodaCalculationMemberProcessor {
                 .map(expense -> expense.getDescription().equals("meals") ? expense.getAmount().multiply(multiplier) : expense.getAmount())
                 .reduce(BigDecimal.ZERO, BigDecimal::add)
                 .setScale(2, RoundingMode.HALF_UP);
+        calculatedAmount = calculatedAmount.subtract(report.getAdvancePayment());
         report.setAmountPayable(calculatedAmount);
 
         return report;
