@@ -4,6 +4,7 @@ import com.example.accounting_demo.model.Expense;
 import com.example.accounting_demo.model.ExpenseReport;
 import com.example.accounting_demo.model.Payment;
 import com.example.accounting_demo.service.EntityService;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.cyoda.cloud.api.event.BaseEvent;
 import org.cyoda.cloud.api.event.DataPayload;
@@ -24,11 +25,11 @@ import java.util.UUID;
 public class CyodaCalculationMemberProcessor {
     private static final Logger logger = LoggerFactory.getLogger(CyodaCalculationMemberClient.class);
 
-    private final ObjectMapper mapper;
+    private final ObjectMapper om;
     private final EntityService entityService;
 
-    public CyodaCalculationMemberProcessor(ObjectMapper mapper, EntityService entityService) {
-        this.mapper = mapper;
+    public CyodaCalculationMemberProcessor(ObjectMapper om, EntityService entityService) {
+        this.om = om;
         this.entityService = entityService;
     }
 
@@ -69,17 +70,17 @@ public class CyodaCalculationMemberProcessor {
 
     private void postPayment(EntityProcessorCalculationRequest request) throws IOException {
         var data = request.getPayload().getData();
-        String dataJson = mapper.writeValueAsString(data);
-        Payment payment = mapper.readValue(dataJson, Payment.class);
+        String dataJson = om.writeValueAsString(data);
+        Payment payment = om.readValue(dataJson, Payment.class);
         var expenseReportId = payment.getExpenseReportId();
         entityService.launchTransition(expenseReportId, "POST_PAYMENT");
     }
 
-    private Object calculateAmountPayable(EntityProcessorCalculationRequest request) throws IOException {
+    private JsonNode calculateAmountPayable(EntityProcessorCalculationRequest request) throws IOException {
         var reportId = UUID.fromString(request.getEntityId());
         var data = request.getPayload().getData();
-        String dataJson = mapper.writeValueAsString(data);
-        ExpenseReport report = mapper.readValue(dataJson, ExpenseReport.class);
+        String dataJson = om.writeValueAsString(data);
+        ExpenseReport report = om.readValue(dataJson, ExpenseReport.class);
         report.setId(reportId);
 
         List<Expense> expensesList = report.getExpenseList();
@@ -91,7 +92,7 @@ public class CyodaCalculationMemberProcessor {
         calculatedAmount = calculatedAmount.subtract(report.getAdvancePayment());
         report.setAmountPayable(calculatedAmount);
 
-        return report;
+        return om.valueToTree(report);
     }
 
     private void sendToBank(EntityProcessorCalculationRequest request) throws IOException {
@@ -132,9 +133,9 @@ public class CyodaCalculationMemberProcessor {
 
     public void createPayment(EntityProcessorCalculationRequest request) throws IOException {
         var data = request.getPayload().getData();
-        String dataJson = mapper.writeValueAsString(data);
+        String dataJson = om.writeValueAsString(data);
 
-        ExpenseReport report = mapper.readValue(dataJson, ExpenseReport.class);
+        ExpenseReport report = om.readValue(dataJson, ExpenseReport.class);
         BigDecimal amountPayable = report.getAmountPayable();
 
         Payment payment = new Payment();

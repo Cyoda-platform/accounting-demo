@@ -8,6 +8,9 @@
     "CalculationMemberJoinEvent",
     "CalculationMemberGreetEvent",
     "EntityProcessorCalculationRequest",
-    "EntityProcessorCalculationResponse"
+    "EntityProcessorCalculationResponse",
+    "EventAckResponse",
+    "EntityCriteriaCalculationRequest",
+    "EntityCriteriaCalculationResponse"
   ]
 }

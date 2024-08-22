@@ -4,7 +4,7 @@
   "title": "CalculationMemberJoinEvent",
   "type": "object",
   "extends": {
-    "$ref": "BaseEvent.json"
+    "$ref": "../common/BaseEvent.json"
   },
   "properties": {
     "tags": {

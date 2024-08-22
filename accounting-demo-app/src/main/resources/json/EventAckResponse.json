@@ -1,18 +1,18 @@
 {
-  "$id": "https://cyoda.com/cloud/event/processing/CalculationMemberGreetEvent.json",
+  "$id": "https://cyoda.com/cloud/event/processing/EventAckResponse.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "CalculationMemberGreetEvent",
+  "title": "EventAckResponse",
   "type": "object",
   "extends": {
     "$ref": "../common/BaseEvent.json"
   },
   "properties": {
-    "memberId": {
+    "sourceEventId": {
       "type": "string",
-      "description": "Assigned member ID."
+      "description": "ID of the original event."
     }
   },
   "required": [
-    "memberId"
+    "sourceEventId"
   ]
 }

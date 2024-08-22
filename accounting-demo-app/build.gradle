@@ -9,7 +9,7 @@ plugins {
 }
 
 group = 'com.example'
-version = '0.0.1-SNAPSHOT'
+version = '3.0.x-SNAPSHOT'
 
 java {
 	sourceCompatibility = '17'
@@ -30,7 +30,6 @@ sourceSets {
 
 dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-web:3.2.4'
-//	implementation 'org.springframework.boot:spring-boot-starter-data-jpa:3.2.5'
 	implementation 'org.springframework.boot:spring-boot-starter'
 
 //	implementation 'com.google.protobuf:protobuf-java:4.26.1'
@@ -53,16 +52,10 @@ dependencies {
 	implementation 'net.datafaker:datafaker:2.0.1'
 	implementation 'org.instancio:instancio-junit:3.0.0'
 
-	runtimeOnly 'com.h2database:h2'
-
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation platform('org.junit:junit-bom:5.10.2')
 	testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
 }
-
-//tasks.named('test') {
-//	useJUnitPlatform()
-//}
 
 test {
 	useJUnitPlatform()
@@ -90,5 +83,4 @@ protobuf {
 			grpc {}
 		}
 	}
-
 }

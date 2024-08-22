@@ -13,6 +13,10 @@
       "description": "Flag indicates whether this message relates to some failure.",
       "default": true
     },
+    "id": {
+      "type": "string",
+      "description": "Event ID."
+    },
     "error": {
       "type": "object",
       "description": "Error details (if present).",
@@ -33,6 +37,7 @@
     }
   },
   "required": [
-    "owner"
+    "owner",
+    "id"
   ]
 }

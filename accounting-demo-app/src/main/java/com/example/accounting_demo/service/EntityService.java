@@ -263,7 +263,11 @@ public class EntityService {
 
 
     public String getSearchResultAsJson(String snapshotId) throws IOException {
-        String url = String.format("%s/api/treeNode/search/snapshot/%s?pageSize=100", host, snapshotId);
+        return getSearchResultAsJson(snapshotId, 100, 0);
+    }
+
+    public String getSearchResultAsJson(String snapshotId, int pageSize, int pageNumber) throws IOException {
+        String url = String.format("%s/api/treeNode/search/snapshot/%s?pageSize=%s&pageNumber=%s", host, snapshotId, pageSize, pageNumber);
         return getRequest(url);
     }
 
