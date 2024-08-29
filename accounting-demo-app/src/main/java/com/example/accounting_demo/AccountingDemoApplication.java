@@ -6,14 +6,11 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.remoting.rmi.RmiServiceExporter;
-import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.PropertySource;
 
 @SpringBootApplication
 @PropertySource("file:./application-env.properties")
 public class AccountingDemoApplication {
-    private static ConfigurableApplicationContext context;
-
     public static void main(String[] args) {
         SpringApplication.run(AccountingDemoApplication.class, args);
     }
