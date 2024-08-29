@@ -1,9 +1,0 @@
-cyoda:
-  host: ${HOST:}
-  name: ${NAME:}
-  password: ${PASSWORD:}
-grpc:
-  server:
-    host: ${GRPC_HOST:}
-    port: 443
-    tls: true

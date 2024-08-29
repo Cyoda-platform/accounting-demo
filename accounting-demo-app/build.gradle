@@ -8,6 +8,10 @@ plugins {
 	id 'com.google.protobuf' version '0.9.4'
 }
 
+bootJar {
+	archiveFileName = 'application.jar'
+}
+
 group = 'com.example'
 version = '3.0.x-SNAPSHOT'
 
@@ -30,6 +34,7 @@ sourceSets {
 
 dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-web:3.2.4'
+	implementation 'org.springframework:spring-remoting:2.0.8'
 	implementation 'org.springframework.boot:spring-boot-starter'
 
 //	implementation 'com.google.protobuf:protobuf-java:4.26.1'
