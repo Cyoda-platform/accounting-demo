@@ -1,7 +1,7 @@
 package com.example.accounting_demo.auxiliary;
 
 import com.example.accounting_demo.model.*;
-import com.example.accounting_demo.service.EntityServiceImpl;
+import com.example.accounting_demo.service.EntityService;
 import lombok.Getter;
 import net.datafaker.Faker;
 import org.instancio.Instancio;
@@ -25,7 +25,7 @@ public class EntityGenerator {
     @Autowired
     private Randomizer randomizer;
     @Autowired
-    private EntityServiceImpl entityServiceImpl;
+    private EntityService entityService;
 
     UUID fakeUuid = UUID.fromString("a50a7fbe-1e3b-11b2-9575-f2bfe09fbe21");
 
@@ -36,7 +36,7 @@ public class EntityGenerator {
 
         List<UUID> idList = fakeEmployeeId
                 ? List.of(fakeUuid)
-                : entityServiceImpl.getAllEntitiesAsObjects("employee", "1").stream()
+                : entityService.getAllEntitiesAsObjects("employee", "1").stream()
                 .map(BaseEntity::getId)
                 .toList();
 

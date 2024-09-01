@@ -3,7 +3,7 @@ package com.example.accounting_demo.processor;
 import com.example.accounting_demo.model.Expense;
 import com.example.accounting_demo.model.ExpenseReport;
 import com.example.accounting_demo.model.Payment;
-import com.example.accounting_demo.service.EntityServiceImpl;
+import com.example.accounting_demo.service.EntityService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.cyoda.cloud.api.event.BaseEvent;
@@ -26,11 +26,11 @@ public class CyodaCalculationMemberProcessor {
     private static final Logger logger = LoggerFactory.getLogger(CyodaCalculationMemberClient.class);
 
     private final ObjectMapper om;
-    private final EntityServiceImpl entityServiceImpl;
+    private final EntityService entityService;
 
-    public CyodaCalculationMemberProcessor(ObjectMapper om, EntityServiceImpl entityServiceImpl) {
+    public CyodaCalculationMemberProcessor(ObjectMapper om, EntityService entityService) {
         this.om = om;
-        this.entityServiceImpl = entityServiceImpl;
+        this.entityService = entityService;
     }
 
 
@@ -73,7 +73,7 @@ public class CyodaCalculationMemberProcessor {
         String dataJson = om.writeValueAsString(data);
         Payment payment = om.readValue(dataJson, Payment.class);
         var expenseReportId = payment.getExpenseReportId();
-        entityServiceImpl.launchTransition(expenseReportId, "POST_PAYMENT");
+        entityService.launchTransition(expenseReportId, "POST_PAYMENT");
     }
 
     private JsonNode calculateAmountPayable(EntityProcessorCalculationRequest request) throws IOException {
@@ -99,21 +99,21 @@ public class CyodaCalculationMemberProcessor {
         boolean isEnoughFunds = new Random().nextBoolean();
         var paymentId = UUID.fromString(request.getEntityId());
 
-        logger.info((entityServiceImpl.getCurrentState(paymentId) + " is state of payment with id: " + paymentId));
+        logger.info((entityService.getCurrentState(paymentId) + " is state of payment with id: " + paymentId));
 
         if (isEnoughFunds) {
-            entityServiceImpl.launchTransition(UUID.fromString(request.getEntityId()), "ACCEPT_BY_BANK");
+            entityService.launchTransition(UUID.fromString(request.getEntityId()), "ACCEPT_BY_BANK");
         } else {
-            entityServiceImpl.launchTransition(UUID.fromString(request.getEntityId()), "REJECT_BY_BANK");
+            entityService.launchTransition(UUID.fromString(request.getEntityId()), "REJECT_BY_BANK");
         }
 
-        logger.info((entityServiceImpl.getCurrentState(paymentId) + " is state of payment with id: " + paymentId));
+        logger.info((entityService.getCurrentState(paymentId) + " is state of payment with id: " + paymentId));
     }
 
     //imitates email notification
     public void sendNotification(EntityProcessorCalculationRequest request) throws IOException {
         var id = UUID.fromString(request.getEntityId());
-        var state = entityServiceImpl.getCurrentState(id);
+        var state = entityService.getCurrentState(id);
         var message = "";
         switch (state) {
             case "SUBMITTED":
@@ -142,6 +142,6 @@ public class CyodaCalculationMemberProcessor {
         payment.setExpenseReportId(UUID.fromString(request.getEntityId()));
         payment.setAmount(amountPayable);
 
-        entityServiceImpl.saveSingleEntity(payment);
+        entityService.saveSingleEntity(payment);
     }
 }
