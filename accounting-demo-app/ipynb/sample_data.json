@@ -1,0 +1,17 @@
+{
+  "employeeId": "7c24b516-57ba-11b2-884b-32c14073892a",
+  "destination": "San Juan",
+  "departureDate": "2024-09-01T11:55:16.479Z",
+  "expenseList": [
+    {
+      "description": "other",
+      "amount": "62.66"
+    },
+    {
+      "description": "transportation",
+      "amount": "27.65"
+    }
+  ],
+  "advancePayment": "75.50",
+  "amountPayable": "0.00"
+}

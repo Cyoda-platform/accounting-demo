@@ -1,0 +1,17 @@
+<root>
+    <employeeId>7c24b516-57ba-11b2-884b-32c14073892a</employeeId>
+    <destination>San Juan</destination>
+    <departureDate>2024-09-01T11:55:16.479Z</departureDate>
+    <expenseList>
+        <expense>
+            <description>other</description>
+            <amount>62.66</amount>
+        </expense>
+        <expense>
+            <description>transportation</description>
+            <amount>27.65</amount>
+        </expense>
+    </expenseList>
+    <advancePayment>75.50</advancePayment>
+    <amountPayable>0.00</amountPayable>
+</root>
