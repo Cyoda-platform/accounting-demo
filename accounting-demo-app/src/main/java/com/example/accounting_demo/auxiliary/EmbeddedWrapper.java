@@ -45,7 +45,7 @@ public class EmbeddedWrapper {
     @Setter
     public static class ModelKey {
         private String legalEntityId;
-        private String modelName;
+        private String name;
         private int version;
     }
 }

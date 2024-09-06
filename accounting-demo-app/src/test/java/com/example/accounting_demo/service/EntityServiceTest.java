@@ -166,7 +166,7 @@ public class EntityServiceTest {
         assertThat(reportFromDb).hasSize(1);
         var savedReportId = reportFromDb.get(0).getId();
 
-        HttpResponse response1 = entityService.deleteEntityByRootId("expense_report", "1", savedReportId.toString());
+        HttpResponse response1 = entityService.deleteEntityById(savedReportId.toString());
         assertThat(response1.getStatusLine().getStatusCode()).isEqualTo(HttpStatus.SC_OK);
     }
 

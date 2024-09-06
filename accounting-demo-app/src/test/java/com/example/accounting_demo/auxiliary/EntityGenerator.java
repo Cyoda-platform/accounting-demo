@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -47,7 +48,7 @@ public class EntityGenerator {
                     .ignore(Select.field(ExpenseReport::getId))
                     .supply(Select.field(ExpenseReport::getEmployeeId), () -> employeeId)
                     .supply(Select.field(ExpenseReport::getDestination), () -> faker.country().capital())
-                    .supply(Select.field(ExpenseReport::getDepartureDate), () -> faker.date().past(1, TimeUnit.DAYS))
+                    .supply(Select.field(ExpenseReport::getDepartureDate), () -> new Timestamp(faker.date().past(1, TimeUnit.DAYS).getTime()))
                     .supply(Select.field(ExpenseReport::getExpenseList), () -> generateExpenseList(2))
                     .supply(Select.field(ExpenseReport::getAdvancePayment), () -> new BigDecimal(faker.commerce().price(50, 100)))
                     .supply(Select.field(ExpenseReport::getAmountPayable), () -> new BigDecimal("0.00"))

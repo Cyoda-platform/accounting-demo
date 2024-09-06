@@ -16,7 +16,7 @@ public class JsonToEntityParser {
         mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
         EmbeddedWrapper.SingleTreeWrapper wrapper = mapper.readValue(jsonResponse, EmbeddedWrapper.SingleTreeWrapper.class);
-        String model = wrapper.getMeta().getModelKey().getModelName();
+        String model = wrapper.getMeta().getModelKey().getName();
         Class clazz = ModelRegistry.getClassByModel(model);
         T entity = (T) mapper.convertValue(wrapper.getTree(), clazz);
         entity.setId(UUID.fromString(wrapper.getMeta().getId()));

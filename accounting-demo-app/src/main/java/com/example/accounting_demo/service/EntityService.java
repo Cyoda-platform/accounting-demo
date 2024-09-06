@@ -35,12 +35,13 @@ public class EntityService {
     private static final Logger logger = LoggerFactory.getLogger(EntityService.class);
 
     private String token;
-
     @Value("${cyoda.host}")
     private String host;
 
     private final String MODEL_VERSION = "1";
-
+    private final String ENTITY_TYPE = "TREE"; // or "TABLE"
+    private final String FORMAT = "JSON"; // or "XML"
+    private final String CONVERTER = "SAMPLE_DATA"; // or "JSON_SCHEMA", "SIMPLE_VIEW"
     private final String ENTITY_CLASS_NAME = "com.cyoda.tdb.model.treenode.TreeNodeEntity";
 
     private final ObjectMapper om;
@@ -68,7 +69,7 @@ public class EntityService {
     public <T extends BaseEntity> HttpResponse saveEntityModel(List<T> entities) throws IOException {
         String model = ModelRegistry.getModelByClass(entities.get(0).getClass());
 
-        String url = String.format("%s/api/treeNode/model/import/JSON/SAMPLE_DATA/%s/%s", host, model, MODEL_VERSION);
+        String url = host + String.format("/api/treeNode/model/import/%s/%s/%s/%s", FORMAT, CONVERTER, model, MODEL_VERSION);
         HttpPost httpPost = new HttpPost(url);
         httpPost.setConfig(requestConfig);
 
@@ -85,11 +86,51 @@ public class EntityService {
         }
     }
 
+    public <T extends BaseEntity> HttpResponse getEntityModel(List<T> entities) throws IOException {
+        String model = ModelRegistry.getModelByClass(entities.get(0).getClass());
+
+        String url = host + String.format("/api/treeNode/model/export/%s/%s/%s", model, CONVERTER, MODEL_VERSION);
+        HttpGet httpGet = new HttpGet(url);
+        httpGet.setHeader("Authorization", "Bearer " + token);
+
+        logger.info(om.writeValueAsString(httpGet.toString()));
+
+        try (CloseableHttpResponse response = httpClient.execute(httpGet)) {
+            return response;
+        }
+    }
+
+    public HttpResponse getAllEntityModels() throws IOException {
+        String url = host + "/api/treeNode/model";
+        HttpGet httpGet = new HttpGet(url);
+        httpGet.setHeader("Authorization", "Bearer " + token);
+
+        logger.info(om.writeValueAsString(httpGet.toString()));
+
+        try (CloseableHttpResponse response = httpClient.execute(httpGet)) {
+            return response;
+        }
+    }
+
     //    entities provided in order to define the model
     public <T extends BaseEntity> HttpResponse lockEntityModel(List<T> entities) throws IOException {
         String model = ModelRegistry.getModelByClass(entities.get(0).getClass());
 
-        String url = String.format("%s/api/treeNode/model/%s/%s/lock", host, model, MODEL_VERSION);
+        String url = host + String.format("/api/treeNode/model/%s/%s/lock", model, MODEL_VERSION);
+        HttpPut httpPut = new HttpPut(url);
+        httpPut.setHeader("Authorization", "Bearer " + token);
+
+        logger.info(om.writeValueAsString(httpPut.toString()));
+
+        try (CloseableHttpResponse response = httpClient.execute(httpPut)) {
+            return response;
+        }
+    }
+
+    public <T extends BaseEntity> HttpResponse unlockEntityModel(List<T> entities) throws IOException {
+        String model = ModelRegistry.getModelByClass(entities.get(0).getClass());
+
+        String url = host + String.format("/api/treeNode/model/%s/%s/unlock", model, MODEL_VERSION);
         HttpPut httpPut = new HttpPut(url);
         httpPut.setHeader("Authorization", "Bearer " + token);
 
@@ -120,14 +161,13 @@ public class EntityService {
     public <T extends BaseEntity> HttpResponse saveEntities(List<T> entities) throws IOException {
         String model = ModelRegistry.getModelByClass(entities.get(0).getClass());
 
-        String url = String.format("%s/api/entity/new/JSON/TREE/%s/%s", host, model, MODEL_VERSION);
+        String url = host + String.format("/api/entity/%s/%s/%s/%s", FORMAT, ENTITY_TYPE, model, MODEL_VERSION);
         HttpPost httpPost = new HttpPost(url);
 
         httpPost.setHeader("Content-Type", "application/json");
         httpPost.setHeader("Authorization", "Bearer " + token);
 
         var json = convertListToJson(entities);
-        System.out.println(json);
         StringEntity requestEntity = new StringEntity(json, ContentType.APPLICATION_JSON);
 
         httpPost.setEntity(requestEntity);
@@ -142,7 +182,7 @@ public class EntityService {
     public <T extends BaseEntity> HttpResponse saveSingleEntity(T entity) throws IOException {
         String model = ModelRegistry.getModelByClass(entity.getClass());
 
-        String url = String.format("%s/api/entity/new/JSON/TREE/%s/%s", host, model, MODEL_VERSION);
+        String url = host + String.format("/api/entity/%s/%s/%s/%s", FORMAT, ENTITY_TYPE, model, MODEL_VERSION);
         HttpPost httpPost = new HttpPost(url);
 
         httpPost.setHeader("Content-Type", "application/json");
@@ -160,8 +200,8 @@ public class EntityService {
         }
     }
 
-    public HttpResponse deleteEntityByRootId(String modelName, String modelVersion, String rootId) throws IOException {
-        String url = String.format(host + "/api/entity/TREE/%s/%s/%s", modelName, modelVersion, rootId);
+    public HttpResponse deleteEntityById(String id) throws IOException {
+        String url = host + String.format("/api/entity/TREE/%s", id);
         HttpDelete httpDelete = new HttpDelete(url);
         httpDelete.setConfig(requestConfig);
         httpDelete.setHeader("Authorization", "Bearer " + token);
@@ -176,7 +216,7 @@ public class EntityService {
     }
 
     public HttpResponse deleteAllEntitiesByModel(String modelName, String modelVersion) throws IOException {
-        String url = String.format(host + "/api/entity/TREE/%s/%s", modelName, modelVersion);
+        String url = host + String.format("/api/entity/%s/%s/%s", ENTITY_TYPE, modelName, modelVersion);
         HttpDelete httpDelete = new HttpDelete(url);
         httpDelete.setHeader("Authorization", "Bearer " + token);
 
@@ -312,7 +352,7 @@ public class EntityService {
     }
 
     public String getByIdAsJson(UUID id) throws IOException {
-        String url = String.format("%s/api/entity/TREE/%s", host, id);
+        String url = host + String.format("/api/entity/TREE/%s", id);
         return getRequest(url);
     }
 
@@ -378,7 +418,7 @@ public class EntityService {
 
     public String getCurrentState(UUID id) throws IOException {
         String entityId = id.toString();
-        String url = String.format("%s/api/platform-api/entity-info/fetch/lazy?entityClass=%s&entityId=%s&columnPath=state", host, ENTITY_CLASS_NAME, entityId);
+        String url = host + String.format("/api/platform-api/entity-info/fetch/lazy?entityClass=%s&entityId=%s&columnPath=state", ENTITY_CLASS_NAME, entityId);
 
         HttpGet httpGet = new HttpGet(url);
         httpGet.setHeader("Authorization", "Bearer " + token);
@@ -400,19 +440,19 @@ public class EntityService {
         String model = ModelRegistry.getModelByClass(entity.getClass());
         String entityId = entity.getId().toString();
 
-        String url = String.format("%s/api/entity/new/JSON/TREE/%s/%s?entityId=%s&transitionName=%s", host, model, MODEL_VERSION, entityId, transitionName);
-        HttpPost httpPost = new HttpPost(url);
+        String url = host + String.format("/api/entity/%s/%s/%s/%s", FORMAT, ENTITY_TYPE, entityId, transitionName);
+        HttpPut httpPut = new HttpPut(url);
 
-        httpPost.setHeader("Content-Type", "application/json");
-        httpPost.setHeader("Authorization", "Bearer " + token);
+        httpPut.setHeader("Content-Type", "application/json");
+        httpPut.setHeader("Authorization", "Bearer " + token);
 
         String json = om.writeValueAsString(entity);
         StringEntity requestEntity = new StringEntity(json, ContentType.APPLICATION_JSON);
-        httpPost.setEntity(requestEntity);
+        httpPut.setEntity(requestEntity);
 
-        logger.info("UPDATE ENTITY REQUEST: " + om.writeValueAsString(httpPost.toString()));
+        logger.info("UPDATE ENTITY REQUEST: " + om.writeValueAsString(httpPut.toString()));
 
-        try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
+        try (CloseableHttpResponse response = httpClient.execute(httpPut)) {
             String responseBody = EntityUtils.toString(response.getEntity());
             logger.info("UPDATE RESPONSE: " + response.getStatusLine() + ", BODY: " + responseBody);
             return response;
