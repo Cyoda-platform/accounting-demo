@@ -79,11 +79,7 @@ public class EntityService {
         StringEntity entity = new StringEntity(convertListToJson(entities), ContentType.APPLICATION_JSON);
         httpPost.setEntity(entity);
 
-        logger.info(om.writeValueAsString(httpPost.toString()));
-
-        try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
-            return response;
-        }
+        return executeHttpRequest(httpPost);
     }
 
     public <T extends BaseEntity> HttpResponse getEntityModel(List<T> entities) throws IOException {
@@ -93,11 +89,7 @@ public class EntityService {
         HttpGet httpGet = new HttpGet(url);
         httpGet.setHeader("Authorization", "Bearer " + token);
 
-        logger.info(om.writeValueAsString(httpGet.toString()));
-
-        try (CloseableHttpResponse response = httpClient.execute(httpGet)) {
-            return response;
-        }
+        return executeHttpRequest(httpGet);
     }
 
     public HttpResponse getAllEntityModels() throws IOException {
@@ -105,14 +97,9 @@ public class EntityService {
         HttpGet httpGet = new HttpGet(url);
         httpGet.setHeader("Authorization", "Bearer " + token);
 
-        logger.info(om.writeValueAsString(httpGet.toString()));
-
-        try (CloseableHttpResponse response = httpClient.execute(httpGet)) {
-            return response;
-        }
+        return executeHttpRequest(httpGet);
     }
 
-    //    entities provided in order to define the model
     public <T extends BaseEntity> HttpResponse lockEntityModel(List<T> entities) throws IOException {
         String model = ModelRegistry.getModelByClass(entities.get(0).getClass());
 
@@ -120,11 +107,7 @@ public class EntityService {
         HttpPut httpPut = new HttpPut(url);
         httpPut.setHeader("Authorization", "Bearer " + token);
 
-        logger.info(om.writeValueAsString(httpPut.toString()));
-
-        try (CloseableHttpResponse response = httpClient.execute(httpPut)) {
-            return response;
-        }
+        return executeHttpRequest(httpPut);
     }
 
     public <T extends BaseEntity> HttpResponse unlockEntityModel(List<T> entities) throws IOException {
@@ -134,11 +117,7 @@ public class EntityService {
         HttpPut httpPut = new HttpPut(url);
         httpPut.setHeader("Authorization", "Bearer " + token);
 
-        logger.info(om.writeValueAsString(httpPut.toString()));
-
-        try (CloseableHttpResponse response = httpClient.execute(httpPut)) {
-            return response;
-        }
+        return executeHttpRequest(httpPut);
     }
 
     public HttpResponse deleteEntityModel(String modelName, String modelVersion) throws IOException {
@@ -146,11 +125,7 @@ public class EntityService {
         HttpDelete httpDelete = new HttpDelete(url);
         httpDelete.setHeader("Authorization", "Bearer " + token);
 
-        logger.info(om.writeValueAsString(httpDelete.toString()));
-
-        try (CloseableHttpResponse response = httpClient.execute(httpDelete)) {
-            return response;
-        }
+        return executeHttpRequest(httpDelete);
     }
 
     public HttpResponse deleteEntityModel(String modelName) throws IOException {
@@ -172,11 +147,7 @@ public class EntityService {
 
         httpPost.setEntity(requestEntity);
 
-        logger.info("SAVE ENTITY REQUEST: " + om.writeValueAsString(httpPost.toString()));
-
-        try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
-            return response;
-        }
+        return executeHttpRequest(httpPost);
     }
 
     public <T extends BaseEntity> HttpResponse saveSingleEntity(T entity) throws IOException {
@@ -193,11 +164,26 @@ public class EntityService {
 
         httpPost.setEntity(requestEntity);
 
-        logger.info("SAVE ENTITY REQUEST: " + om.writeValueAsString(httpPost.toString()));
+        return executeHttpRequest(httpPost);
+    }
 
-        try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
+    public HttpResponse executeHttpRequest(HttpRequestBase request) throws IOException {
+        logger.info(om.writeValueAsString(request.toString()));
+
+        try (CloseableHttpResponse response = httpClient.execute(request)) {
+            int statusCode = response.getStatusLine().getStatusCode();
+            if (statusCode == 200) {
+                System.out.println("OK");
+            } else {
+                logger.error("Error: Status = {}, Response = {}",
+                        response.getStatusLine().getStatusCode(),
+                        EntityUtils.toString(response.getEntity()));
+            }
             return response;
+        } catch (Exception e) {
+            logger.error("Exception: {}", e.getMessage(), e);
         }
+        return null;
     }
 
     public HttpResponse deleteEntityById(String id) throws IOException {
@@ -206,13 +192,7 @@ public class EntityService {
         httpDelete.setConfig(requestConfig);
         httpDelete.setHeader("Authorization", "Bearer " + token);
 
-        logger.info(om.writeValueAsString(httpDelete.toString()));
-
-        try (CloseableHttpResponse response = httpClient.execute(httpDelete)) {
-            String responseBody = EntityUtils.toString(response.getEntity());
-            logger.info(om.writeValueAsString(responseBody));
-            return response;
-        }
+        return executeHttpRequest(httpDelete);
     }
 
     public HttpResponse deleteAllEntitiesByModel(String modelName, String modelVersion) throws IOException {
@@ -220,11 +200,7 @@ public class EntityService {
         HttpDelete httpDelete = new HttpDelete(url);
         httpDelete.setHeader("Authorization", "Bearer " + token);
 
-        logger.info(om.writeValueAsString(httpDelete.toString()));
-
-        try (CloseableHttpResponse response = httpClient.execute(httpDelete)) {
-            return response;
-        }
+        return executeHttpRequest(httpDelete);
     }
 
     public <T extends BaseEntity> HttpResponse deleteAllEntitiesByModel(List<T> entities) throws IOException {
@@ -383,11 +359,7 @@ public class EntityService {
         httpPut.setConfig(requestConfig);
         httpPut.setHeader("Authorization", "Bearer " + token);
 
-        logger.info(om.writeValueAsString(httpPut.toString()));
-
-        try (CloseableHttpResponse response = httpClient.execute(httpPut)) {
-            return response;
-        }
+        return executeHttpRequest(httpPut);
     }
 
     public List<String> getListTransitions(UUID id) throws IOException {
@@ -450,13 +422,7 @@ public class EntityService {
         StringEntity requestEntity = new StringEntity(json, ContentType.APPLICATION_JSON);
         httpPut.setEntity(requestEntity);
 
-        logger.info("UPDATE ENTITY REQUEST: " + om.writeValueAsString(httpPut.toString()));
-
-        try (CloseableHttpResponse response = httpClient.execute(httpPut)) {
-            String responseBody = EntityUtils.toString(response.getEntity());
-            logger.info("UPDATE RESPONSE: " + response.getStatusLine() + ", BODY: " + responseBody);
-            return response;
-        }
+        return executeHttpRequest(httpPut);
     }
 }
 

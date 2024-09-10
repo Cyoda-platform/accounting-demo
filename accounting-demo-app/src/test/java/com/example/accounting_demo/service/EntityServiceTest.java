@@ -4,13 +4,10 @@ import com.example.accounting_demo.auxiliary.*;
 import com.example.accounting_demo.model.ExpenseReport;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -19,6 +16,7 @@ import java.util.stream.Collectors;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class EntityServiceTest {
 
     @Autowired
@@ -33,8 +31,8 @@ public class EntityServiceTest {
     @Autowired
     private JsonToEntityListParser jsonToEntityListParser;
 
-    @BeforeEach
-    void addEntityModels() throws IOException {
+    @BeforeAll
+    void setUpBeforeClass() throws Exception {
         entityService.deleteAllEntitiesByModel("expense_report");
         entityService.deleteAllEntitiesByModel("employee");
         entityService.deleteAllEntitiesByModel("payment");
@@ -58,6 +56,13 @@ public class EntityServiceTest {
 
     @AfterEach
     void deleteEntitiesAndModels() throws Exception {
+        entityService.deleteAllEntitiesByModel("expense_report");
+        entityService.deleteAllEntitiesByModel("employee");
+        entityService.deleteAllEntitiesByModel("payment");
+    }
+
+    @AfterAll
+    void tearDownAfterClass() throws Exception {
         entityService.deleteAllEntitiesByModel("expense_report");
         entityService.deleteAllEntitiesByModel("employee");
         entityService.deleteAllEntitiesByModel("payment");
