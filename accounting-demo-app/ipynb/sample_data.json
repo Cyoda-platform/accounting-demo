@@ -5,13 +5,13 @@
   "expenseList": [
     {
       "description": "other",
-      "amount": "62.66"
+      "amount": 62.66
     },
     {
       "description": "transportation",
-      "amount": "27.65"
+      "amount": 27.65
     }
   ],
-  "advancePayment": "75.50",
-  "amountPayable": "0.00"
+  "advancePayment": 75.50,
+  "amountPayable": 0.00
 }
