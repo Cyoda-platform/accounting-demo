@@ -1,5 +1,6 @@
 package com.example.accounting_demo.processor;
 
+import com.example.accounting_demo.service.Authentication;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.protobuf.InvalidProtocolBufferException;
@@ -9,10 +10,15 @@ import io.cloudevents.core.format.EventFormat;
 import io.cloudevents.core.provider.EventFormatProvider;
 import io.cloudevents.protobuf.ProtobufFormat;
 import io.cloudevents.v1.proto.CloudEvent;
+import io.grpc.ClientInterceptor;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
+import io.grpc.Metadata;
+import io.grpc.stub.MetadataUtils;
 import io.grpc.stub.StreamObserver;
-import org.cyoda.cloud.api.event.*;
+import org.cyoda.cloud.api.event.BaseEvent;
+import org.cyoda.cloud.api.event.CalculationMemberJoinEvent;
+import org.cyoda.cloud.api.event.EntityProcessorCalculationRequest;
 import org.cyoda.cloud.api.grpc.CloudEventsServiceGrpc;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +39,7 @@ import java.util.concurrent.TimeUnit;
 public class CyodaCalculationMemberClient implements DisposableBean, InitializingBean {
     private static final Logger logger = LoggerFactory.getLogger(CyodaCalculationMemberClient.class);
 
+    private String token;
     private ManagedChannel managedChannel;
     private CloudEventsServiceGrpc.CloudEventsServiceStub cloudEventsServiceStub;
     private StreamObserver<CloudEvent> cloudEventStreamObserver;
@@ -49,12 +56,16 @@ public class CyodaCalculationMemberClient implements DisposableBean, Initializin
     @Value("${grpc.server.tls}")
     private boolean tls;
 
-    public CyodaCalculationMemberClient(ObjectMapper objectMapper, CyodaCalculationMemberProcessor processor) {
+    public CyodaCalculationMemberClient(ObjectMapper objectMapper, CyodaCalculationMemberProcessor processor, Authentication authentication) {
         this.objectMapper = objectMapper;
         this.calculationMemberProcessor = processor;
+        this.token = authentication.getToken();
+
+        if (this.token == null) {
+            throw new IllegalStateException("Token is not initialized");
+        }
     }
 
-    //./grpcurl -plaintext kube-cyoda-develop-unified-grpc.cyoda.org:443 list
     @Override
     public void afterPropertiesSet() {
         try {
@@ -67,8 +78,17 @@ public class CyodaCalculationMemberClient implements DisposableBean, Initializin
                         .usePlaintext()
                         .build();
             }
+
+            Metadata metadata = new Metadata();
+            Metadata.Key<String> authKey = Metadata.Key.of("authorization", Metadata.ASCII_STRING_MARSHALLER);
+            metadata.put(authKey, "Bearer " + token);
+
+            ClientInterceptor authInterceptor = MetadataUtils.newAttachHeadersInterceptor(metadata);
+
             cloudEventsServiceStub = CloudEventsServiceGrpc.newStub(managedChannel)
-                    .withWaitForReady();
+                    .withWaitForReady()
+                    .withInterceptors(authInterceptor);
+
             eventFormat = EventFormatProvider.getInstance().resolveFormat(ProtobufFormat.PROTO_CONTENT_TYPE);
             if (eventFormat == null) {
                 throw new IllegalStateException("Unable to resolve protobuf event format");
