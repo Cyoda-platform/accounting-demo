@@ -27,6 +27,7 @@ sourceSets {
 	main {
 		java {
 			srcDirs += 'build/generated/source/'
+			exclude '**/.ipynb_checkpoints/**'
 		}
 	}
 }
