@@ -1,1 +1,1 @@
-# cyoda-client-example
+# accounting-demo
