@@ -1,0 +1,12 @@
+{
+  "employee_name": "John Doe",
+  "department": "Sales",
+  "position": "Sales Manager",
+  "expense_date": "2024-10-05",
+  "expense_category": "Travel",
+  "expense_description": "Flight to client meeting",
+  "amount": 250.00,
+  "project_name": "Client Acquisition",
+  "quarter": "Q4",
+  "year": 2024
+}

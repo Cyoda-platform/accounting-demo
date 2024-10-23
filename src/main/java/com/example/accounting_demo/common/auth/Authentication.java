@@ -1,4 +1,4 @@
-package com.example.accounting_demo.service;
+package com.example.accounting_demo.common.auth;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;

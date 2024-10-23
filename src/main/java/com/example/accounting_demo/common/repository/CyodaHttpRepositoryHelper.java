@@ -1,10 +1,10 @@
-package com.example.accounting_demo.service;
+package com.example.accounting_demo.common.repository;
 
-import com.example.accounting_demo.auxiliary.JsonToEntityListParser;
-import com.example.accounting_demo.auxiliary.JsonToEntityParser;
-import com.example.accounting_demo.auxiliary.ModelRegistry;
-import com.example.accounting_demo.auxiliary.SearchConditionRequest;
-import com.example.accounting_demo.model.BaseEntity;
+import com.example.accounting_demo.common.auth.Authentication;
+import com.example.accounting_demo.common.util.JsonToEntityListParser;
+import com.example.accounting_demo.common.util.JsonToEntityParser;
+import com.example.accounting_demo.common.util.ModelRegistry;
+import com.example.accounting_demo.common.util.SearchConditionRequest;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -31,14 +31,14 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 @Component
-public class EntityService {
-    private static final Logger logger = LoggerFactory.getLogger(EntityService.class);
+public class CyodaHttpRepositoryHelper {
+    private static final Logger logger = LoggerFactory.getLogger(CyodaHttpRepositoryHelper.class);
 
     private String token;
     @Value("${cyoda.host}")
     private String host;
 
-    private final String MODEL_VERSION = "1";
+    private final String MODEL_VERSION = "1000";
     private final String ENTITY_TYPE = "TREE"; // or "TABLE"
     private final String FORMAT = "JSON"; // or "XML"
     private final String CONVERTER = "SAMPLE_DATA"; // or "JSON_SCHEMA", "SIMPLE_VIEW"
@@ -55,7 +55,7 @@ public class EntityService {
             .setConnectionRequestTimeout(5000)
             .build();
 
-    public EntityService(ObjectMapper om, JsonToEntityListParser jsonToEntityListParser, JsonToEntityParser jsonToEntityParser, Authentication authentication) {
+    public CyodaHttpRepositoryHelper(ObjectMapper om, JsonToEntityListParser jsonToEntityListParser, JsonToEntityParser jsonToEntityParser, Authentication authentication) {
         this.om = om;
         this.jsonToEntityListParser = jsonToEntityListParser;
         this.jsonToEntityParser = jsonToEntityParser;
@@ -150,7 +150,7 @@ public class EntityService {
         return executeHttpRequest(httpPost);
     }
 
-    public <T extends BaseEntity> HttpResponse saveSingleEntity(T entity) throws IOException {
+    public <T extends BaseEntity> boolean saveSingleEntity(T entity) {
         String model = ModelRegistry.getModelByClass(entity.getClass());
 
         String url = host + String.format("/api/entity/%s/%s/%s/%s", FORMAT, ENTITY_TYPE, model, MODEL_VERSION);
@@ -159,12 +159,22 @@ public class EntityService {
         httpPost.setHeader("Content-Type", "application/json");
         httpPost.setHeader("Authorization", "Bearer " + token);
 
-        var json = om.writeValueAsString(entity);
+        String json = null;
+        try {
+            json = om.writeValueAsString(entity);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
         StringEntity requestEntity = new StringEntity(json, ContentType.APPLICATION_JSON);
 
         httpPost.setEntity(requestEntity);
 
-        return executeHttpRequest(httpPost);
+        try {
+            HttpResponse resp = executeHttpRequest(httpPost);
+            return true;
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public HttpResponse executeHttpRequest(HttpRequestBase request) throws IOException {
@@ -332,10 +342,19 @@ public class EntityService {
         return getRequest(url);
     }
 
-    public <T extends BaseEntity> T getByIdAsObject(UUID id) throws IOException {
-        String json = getByIdAsJson(id);
+    public <T extends BaseEntity> T getByIdAsObject(UUID id) {
+        String json = null;
+        try {
+            json = getByIdAsJson(id);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
 
-        return jsonToEntityParser.parseResponse(json);
+        try {
+            return jsonToEntityParser.parseResponse(json);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public String getRequest(String url) throws IOException {
@@ -408,7 +427,7 @@ public class EntityService {
         return jsonNode.get(0).get("value").asText();
     }
 
-    public <T extends BaseEntity> HttpResponse updateEntity(T entity, String transitionName) throws IOException {
+    public <T extends BaseEntity> boolean updateEntity(T entity, String transitionName) {
         String model = ModelRegistry.getModelByClass(entity.getClass());
         String entityId = entity.getId().toString();
 
@@ -418,11 +437,21 @@ public class EntityService {
         httpPut.setHeader("Content-Type", "application/json");
         httpPut.setHeader("Authorization", "Bearer " + token);
 
-        String json = om.writeValueAsString(entity);
+        String json = null;
+        try {
+            json = om.writeValueAsString(entity);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
         StringEntity requestEntity = new StringEntity(json, ContentType.APPLICATION_JSON);
         httpPut.setEntity(requestEntity);
 
-        return executeHttpRequest(httpPut);
+        try {
+            HttpResponse resp =  executeHttpRequest(httpPut);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        return true;
     }
 }
 

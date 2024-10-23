@@ -1,6 +1,6 @@
-package com.example.accounting_demo.auxiliary;
+package com.example.accounting_demo.common.util;
 
-import com.example.accounting_demo.model.BaseEntity;
+import com.example.accounting_demo.common.repository.BaseEntity;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;

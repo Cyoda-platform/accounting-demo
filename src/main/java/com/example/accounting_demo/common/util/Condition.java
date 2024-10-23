@@ -1,4 +1,4 @@
-package com.example.accounting_demo.auxiliary;
+package com.example.accounting_demo.common.util;
 
 import lombok.Getter;
 import lombok.Setter;

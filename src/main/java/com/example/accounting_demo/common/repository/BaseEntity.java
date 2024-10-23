@@ -1,8 +1,9 @@
-package com.example.accounting_demo.model;
+package com.example.accounting_demo.common.repository;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Getter;
 import lombok.Setter;
+import org.springframework.boot.autoconfigure.domain.EntityScan;
 
 import java.util.Objects;
 import java.util.UUID;

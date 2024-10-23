@@ -1,4 +1,4 @@
-package com.example.accounting_demo.auxiliary;
+package com.example.accounting_demo.common.util;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;

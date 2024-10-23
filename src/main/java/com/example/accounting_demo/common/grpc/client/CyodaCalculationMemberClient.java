@@ -1,6 +1,7 @@
-package com.example.accounting_demo.processor;
+package com.example.accounting_demo.common.grpc.client;
 
-import com.example.accounting_demo.service.Authentication;
+import com.example.accounting_demo.common.auth.Authentication;
+import com.example.accounting_demo.entity.EntityWorkflow;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.protobuf.InvalidProtocolBufferException;
@@ -19,6 +20,7 @@ import io.grpc.stub.StreamObserver;
 import org.cyoda.cloud.api.event.BaseEvent;
 import org.cyoda.cloud.api.event.CalculationMemberJoinEvent;
 import org.cyoda.cloud.api.event.EntityProcessorCalculationRequest;
+import org.cyoda.cloud.api.event.EventAckResponse;
 import org.cyoda.cloud.api.grpc.CloudEventsServiceGrpc;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,13 +41,13 @@ import java.util.concurrent.TimeUnit;
 public class CyodaCalculationMemberClient implements DisposableBean, InitializingBean {
     private static final Logger logger = LoggerFactory.getLogger(CyodaCalculationMemberClient.class);
 
-    private String token;
+    private final String token;
     private ManagedChannel managedChannel;
     private CloudEventsServiceGrpc.CloudEventsServiceStub cloudEventsServiceStub;
     private StreamObserver<CloudEvent> cloudEventStreamObserver;
     private EventFormat eventFormat;
     private final ObjectMapper objectMapper;
-    private final CyodaCalculationMemberProcessor calculationMemberProcessor;
+    private final EntityWorkflow entityWorkflow;
 
     @Value("${grpc.server.host}")
     private String grpcServerAddress;
@@ -56,9 +58,9 @@ public class CyodaCalculationMemberClient implements DisposableBean, Initializin
     @Value("${grpc.server.tls}")
     private boolean tls;
 
-    public CyodaCalculationMemberClient(ObjectMapper objectMapper, CyodaCalculationMemberProcessor processor, Authentication authentication) {
+    public CyodaCalculationMemberClient(ObjectMapper objectMapper, EntityWorkflow entityWorkflow, Authentication authentication) {
         this.objectMapper = objectMapper;
-        this.calculationMemberProcessor = processor;
+        this.entityWorkflow = entityWorkflow;
         this.token = authentication.getToken();
 
         if (this.token == null) {
@@ -107,7 +109,7 @@ public class CyodaCalculationMemberClient implements DisposableBean, Initializin
         }
         if (managedChannel != null) {
             try {
-                managedChannel.shutdown().awaitTermination(10, TimeUnit.SECONDS);
+                managedChannel.shutdown().awaitTermination(100, TimeUnit.SECONDS);
                 if (!managedChannel.isTerminated()) {
                     logger.warn("Forcing gRPC channel shutdown");
                     managedChannel.shutdownNow();
@@ -143,7 +145,7 @@ public class CyodaCalculationMemberClient implements DisposableBean, Initializin
             logger.info("Started streaming events from gRPC server");
             CalculationMemberJoinEvent event = new CalculationMemberJoinEvent();
             event.setOwner("PLAY");
-            event.setTags(List.of("accounting"));
+            event.setTags(List.of("employee_expense"));
             sendEvent(event);
         } catch (Exception e) {
             logger.error("Failed to start streaming events from gRPC server", e);
@@ -152,19 +154,23 @@ public class CyodaCalculationMemberClient implements DisposableBean, Initializin
 
     private void handleCloudEvent(CloudEvent cloudEvent) {
         try {
-//            logger.info("<< Received event: \n{}", cloudEvent.getTextData());
+            logger.info("<< Received event: \n{}", cloudEvent.getTextData());
             Object json = objectMapper.readValue(cloudEvent.getTextData(), Object.class);
             logger.info("<< Received event: \n" + objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(json));
             switch (cloudEvent.getType()) {
                 case "EntityProcessorCalculationRequest":
                     EntityProcessorCalculationRequest request = objectMapper.readValue(cloudEvent.getTextData(), EntityProcessorCalculationRequest.class);
                     logger.info("Processing EntityProcessorCalculationRequest: {}", request.getProcessorName());
-                    BaseEvent response = calculationMemberProcessor.calculate(request);
+                    BaseEvent response = entityWorkflow.calculate(request);
                     sendEvent(response);
                     break;
                 case "EventAckResponse":
-//                    logger.info("Received EventAckResponse";
+                    logger.info("Received EventAckResponse");
                     break;
+                case "CalculationMemberKeepAliveEvent":
+                    EventAckResponse eventAckResponse = objectMapper.readValue(cloudEvent.getTextData(), EventAckResponse.class);
+                    eventAckResponse.setSourceEventId(eventAckResponse.getId());
+                    sendEvent(eventAckResponse);
 
                 default:
                     logger.info("Unhandled event type: {}", cloudEvent.getType());
